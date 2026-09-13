@@ -10,6 +10,7 @@ const EPS = 1e-3;
 const TYPES = {
   zombie: {
     name: "僵尸",
+    model: "humanoid",
     health: 20,
     speed: 1.7,
     damage: 3,
@@ -28,6 +29,7 @@ const TYPES = {
   },
   slime: {
     name: "史莱姆",
+    model: "slime",
     health: 12,
     speed: 2.1,
     damage: 2,
@@ -42,7 +44,43 @@ const TYPES = {
     skin: "#6fbf4a",
     eye: "#14240f",
   },
+  elite: {
+    name: "精英僵尸",
+    model: "humanoid",
+    health: 40,
+    speed: 1.9,
+    damage: 5,
+    attackRange: 1.3,
+    attackCooldown: 0.85,
+    detectRange: 26,
+    halfWidth: 0.38,
+    height: 2.25,
+    hitRadius: 0.9,
+    hop: false,
+    jumpSpeed: 8.2,
+    scale: 1.25,
+    skin: "#3f7a34",
+    eye: "#ff5a2a",
+    shirt: "#27405f",
+    pants: "#1c2236",
+  },
 };
+
+// 阶梯式难度：达到 at（秒，实际游玩时间）后进入该阶段
+export const STAGES = [
+  { name: "和平", at: 0, types: [], cap: 0, interval: 0 },
+  { name: "史莱姆", at: 120, types: ["slime"], cap: 3, interval: 12 },
+  { name: "僵尸", at: 300, types: ["slime", "zombie"], cap: 6, interval: 8 },
+  { name: "精英夜袭", at: 480, types: ["slime", "zombie", "elite"], cap: 10, interval: 5 },
+];
+
+export function stageIndexFor(t) {
+  let idx = 0;
+  for (let i = 0; i < STAGES.length; i++) {
+    if (t >= STAGES[i].at) idx = i;
+  }
+  return idx;
+}
 
 const _tmp = new THREE.Vector3();
 const _ray = new THREE.Ray();
@@ -145,8 +183,9 @@ export class Mob {
   }
 
   build() {
-    if (this.type === "slime") this.buildSlime();
+    if (this.def.model === "slime") this.buildSlime();
     else this.buildZombie();
+    if (this.def.scale) this.group.scale.setScalar(this.def.scale);
     this.baseColors = this.materials.map((m) => m.color.clone());
   }
 
@@ -378,9 +417,26 @@ export class MobManager {
     this.world = world;
     this.scene = scene;
     this.mobs = [];
-    this.spawnTimer = 4;
-    this.maxMobs = 12;
+    this.playTime = 0;
+    this.stageIndex = 0;
+    this.spawnTimer = 0;
+    this.onStageChange = null;
     this.enabled = true;
+  }
+
+  get currentStage() {
+    return STAGES[this.stageIndex];
+  }
+
+  get nextStage() {
+    return this.stageIndex + 1 < STAGES.length ? STAGES[this.stageIndex + 1] : null;
+  }
+
+  // 读档：不触发阶段播报
+  loadProgress(playTime) {
+    this.playTime = Math.max(0, playTime || 0);
+    this.stageIndex = stageIndexFor(this.playTime);
+    this.spawnTimer = 2;
   }
 
   clear() {
@@ -395,6 +451,8 @@ export class MobManager {
   }
 
   spawn(player) {
+    const stage = this.currentStage;
+    if (!stage.types.length) return null;
     for (let attempt = 0; attempt < 16; attempt++) {
       const ang = Math.random() * Math.PI * 2;
       const dist = 14 + Math.random() * 14;
@@ -407,7 +465,7 @@ export class MobManager {
       if (this.world.getBlock(x, y, z) !== AIR) continue;
       if (this.world.getBlock(x, y + 1, z) !== AIR) continue;
 
-      const type = Math.random() < 0.62 ? "zombie" : "slime";
+      const type = stage.types[Math.floor(Math.random() * stage.types.length)];
       const mob = new Mob(this.world, type, new THREE.Vector3(x + 0.5, y, z + 0.5));
       this.mobs.push(mob);
       this.scene.add(mob.group);
@@ -417,10 +475,22 @@ export class MobManager {
   }
 
   update(dt, player) {
-    this.spawnTimer -= dt;
-    if (this.spawnTimer <= 0) {
-      this.spawnTimer = 3 + Math.random() * 3;
-      if (this.enabled && this.mobs.length < this.maxMobs) this.spawn(player);
+    this.playTime += dt;
+
+    const idx = stageIndexFor(this.playTime);
+    if (idx !== this.stageIndex) {
+      this.stageIndex = idx;
+      this.spawnTimer = 2;
+      if (this.onStageChange) this.onStageChange(STAGES[idx], idx);
+    }
+
+    const stage = STAGES[this.stageIndex];
+    if (this.enabled && stage.interval > 0) {
+      this.spawnTimer -= dt;
+      if (this.spawnTimer <= 0) {
+        this.spawnTimer = stage.interval;
+        if (this.mobs.length < stage.cap) this.spawn(player);
+      }
     }
 
     for (let i = this.mobs.length - 1; i >= 0; i--) {

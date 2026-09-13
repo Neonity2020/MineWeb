@@ -124,6 +124,9 @@ body {
 #fps {
   opacity: 0.75;
 }
+#threat {
+  color: #ffb27a;
+}
 
 /* ---------- 物品栏 ---------- */
 #hotbar {

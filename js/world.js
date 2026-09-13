@@ -634,7 +634,7 @@ export class World {
 
     while (t <= maxDist) {
       const b = this.getBlock(x, y, z);
-      if (b !== AIR && b !== WATER) return { x, y, z, nx, ny, nz };
+      if (b !== AIR && b !== WATER) return { x, y, z, nx, ny, nz, t };
       if (tMaxX < tMaxY && tMaxX < tMaxZ) {
         x += stepX;
         t = tMaxX;

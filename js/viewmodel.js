@@ -64,6 +64,13 @@ export class ViewModel {
     this.itemMat = null;
     this.shownId = null;
     this.lastSwitch = 0;
+    this.recoil = 0;
+    this._lastTime = 0;
+  }
+
+  // 开火后坐力
+  kick(amount = 0.16) {
+    this.recoil = Math.max(this.recoil, amount);
   }
 
   showItem(id, now = performance.now() / 1000) {
@@ -122,6 +129,10 @@ export class ViewModel {
   }
 
   update(time) {
+    const dt = Math.min(0.05, Math.max(0, time - this._lastTime));
+    this._lastTime = time;
+    this.recoil = Math.max(0, this.recoil - dt * 1.6);
+
     const bob = Math.sin(time * 5.5) * 0.018;
     this.arm.position.y = -0.33 + bob;
     this.hand.position.y = -0.37 + bob;
@@ -131,5 +142,9 @@ export class ViewModel {
       this.item.scale.setScalar(popIn);
       this.item.position.y = -0.36 + Math.sin(time * 1.4) * 0.01;
     }
+
+    // 后坐力：整组向后上抬
+    this.group.position.z = this.recoil * 0.5;
+    this.group.rotation.x = this.recoil * 1.1;
   }
 }

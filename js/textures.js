@@ -124,6 +124,29 @@ const PAINTERS = {
     if (x > 3 && x < 12 && y > 6 && y < 12) base = [120, 88, 48];
     return [...shade(base, n), 255];
   },
+  pistol(x, y, rnd) {
+    let part = null;
+    // 套筒 / 枪管
+    if (y >= 4 && y <= 6 && x >= 2 && x <= 13) part = "metal";
+    // 枪口
+    if (y >= 4 && y <= 5 && x === 14) part = "metal";
+    // 前准星
+    if (y === 3 && x >= 11 && x <= 12) part = "metal";
+    // 套筒纹路
+    if (y === 5 && x >= 4 && x <= 10 && x % 3 === 0) part = "groove";
+    // 握把
+    if (x >= 4 && x <= 7 && y >= 7 && y <= 13) part = "grip";
+    // 扳机护圈
+    if (x >= 8 && x <= 10 && y >= 8 && y <= 9) part = "metal";
+    if (x === 9 && y === 7) part = "metal";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 16 - 8;
+    let base;
+    if (part === "grip") base = [96, 68, 42];
+    else if (part === "groove") base = [44, 46, 52];
+    else base = [82, 85, 94];
+    return [...shade(base, n), 255];
+  },
 };
 
 // 工具图标：斜向木柄 + 不同形状的头部

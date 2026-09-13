@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js";
 import { Player } from "./player.js";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, isTool, isPlaceable } from "./blocks.js";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, isTool, isPlaceable, isGun } from "./blocks.js";
 import { drawTileTo } from "./textures.js";
 import { Inventory } from "./inventory.js";
 import { RECIPES } from "./recipes.js";
@@ -32,6 +32,7 @@ const minebarEl = document.getElementById("minebar");
 const mineFillEl = document.getElementById("mineFill");
 const healthEl = document.getElementById("health");
 const hurtEl = document.getElementById("hurt");
+const threatEl = document.getElementById("threat");
 
 const SAVE_KEY = "mineweb.save.v1";
 
@@ -63,6 +64,20 @@ const highlight = new THREE.LineSegments(
 );
 highlight.visible = false;
 scene.add(highlight);
+
+// 手枪弹道
+const tracerGeo = new THREE.BufferGeometry();
+tracerGeo.setAttribute(
+  "position",
+  new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3)
+);
+const tracerMat = new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9 });
+const tracer = new THREE.Line(tracerGeo, tracerMat);
+tracer.frustumCulled = false;
+tracer.visible = false;
+scene.add(tracer);
+let tracerTimer = 0;
+let gunCooldown = 0;
 
 // ---------- 物品栏 / 背包 ----------
 let selected = 0;
@@ -145,8 +160,9 @@ function updateHotbar() {
   });
   const held = HOTBAR[selected];
   heldNameEl.textContent = BLOCKS[held].name;
-  // 生存模式下未持有的工具不显示手持模型，只留手臂
-  const heldOwned = creative || !isTool(held) || inventory.count(held) > 0;
+  // 生存模式下未持有的工具/枪械不显示手持模型，只留手臂
+  const countable = isTool(held) || isGun(held);
+  const heldOwned = creative || !countable || inventory.count(held) > 0;
   viewmodel.showItem(heldOwned ? held : AIR);
 }
 
@@ -337,6 +353,7 @@ function saveGame(silent = false) {
     },
     creative,
     selected,
+    playTime: mobs.playTime,
     inventory: inventory.entries(),
     edits: world.serializeEdits(),
   };
@@ -379,8 +396,10 @@ async function loadGame() {
   updateHotbar();
   player.update(0);
   mobs.clear();
+  mobs.loadProgress(save.playTime || 0);
   lastHealth = player.health;
   renderHealth();
+  updateThreatHud();
 
   setProgress(100, "读取完成");
   await frame();
@@ -523,6 +542,11 @@ document.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("mousedown", (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (e.button === 0) {
+    // 手持枪械：射击
+    if (isGun(HOTBAR[selected])) {
+      fireGun();
+      return;
+    }
     // 优先攻击准星内的怪物
     if (tryAttack()) return;
     // 创造模式立即破坏；生存模式按住左键逐步挖掘
@@ -579,6 +603,27 @@ function flashHurt() {
   hurtFlashTimer = setTimeout(() => hurtEl.classList.remove("show"), 130);
 }
 
+function formatClock(seconds) {
+  const s = Math.max(0, Math.ceil(seconds));
+  const m = Math.floor(s / 60);
+  return `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function updateThreatHud() {
+  const stage = mobs.currentStage;
+  const next = mobs.nextStage;
+  if (!next) {
+    threatEl.textContent = `威胁：${stage.name}（最高）`;
+    return;
+  }
+  threatEl.textContent = `威胁：${stage.name} · 下一阶段 ${formatClock(next.at - mobs.playTime)}`;
+}
+
+// 阶段推进时提示玩家
+mobs.onStageChange = (stage, idx) => {
+  if (idx > 0) toast(`怪物变得更强了：${stage.name}`);
+};
+
 // ---------- 交互 ----------
 function intersectsPlayer(bx, by, bz) {
   const p = player.position;
@@ -609,6 +654,14 @@ function heldTool() {
   if (!isTool(id)) return null;
   if (!creative && inventory.count(id) <= 0) return null;
   return { id, ...BLOCKS[id].use };
+}
+
+// 当前手持枪械（未持有或非枪械则返回 null）
+function heldGun() {
+  const id = HOTBAR[selected];
+  if (!isGun(id)) return null;
+  if (!creative && inventory.count(id) <= 0) return null;
+  return BLOCKS[id].gun;
 }
 
 // 挖掘速度：匹配方块偏好工具时用工具速度，否则徒手
@@ -716,13 +769,44 @@ function tryAttack() {
 
   // 被方块挡住则打不到
   const blockHit = world.raycast(origin, dir, ATTACK_REACH);
-  if (blockHit) {
-    const bc = new THREE.Vector3(blockHit.x + 0.5, blockHit.y + 0.5, blockHit.z + 0.5);
-    if (origin.distanceTo(bc) < mobHit.distance) return false;
-  }
+  if (blockHit && blockHit.t < mobHit.distance) return false;
 
   mobHit.mob.hurt(creative ? 1000 : 4);
   if (mobHit.mob.dead) mobs.remove(mobHit.mob);
+  return true;
+}
+
+function showTracer(from, to) {
+  const attr = tracerGeo.getAttribute("position");
+  attr.setXYZ(0, from.x, from.y, from.z);
+  attr.setXYZ(1, to.x, to.y, to.z);
+  attr.needsUpdate = true;
+  tracer.visible = true;
+  tracerTimer = 0.06;
+}
+
+function fireGun() {
+  const gun = heldGun();
+  if (!gun) return false;
+  if (gunCooldown > 0) return true;
+  gunCooldown = gun.cooldown;
+
+  const origin = player.eyePosition;
+  const dir = player.getLookDirection();
+  const blockHit = world.raycast(origin, dir, gun.range);
+  const mobHit = mobs.raycast(origin, dir, gun.range);
+
+  let end = origin.clone().addScaledVector(dir, gun.range);
+  if (mobHit && (!blockHit || mobHit.distance < blockHit.t)) {
+    end = origin.clone().addScaledVector(dir, mobHit.distance);
+    mobHit.mob.hurt(creative ? 1000 : gun.damage);
+    if (mobHit.mob.dead) mobs.remove(mobHit.mob);
+  } else if (blockHit) {
+    end = origin.clone().addScaledVector(dir, blockHit.t);
+  }
+
+  showTracer(origin, end);
+  viewmodel.kick();
   return true;
 }
 
@@ -748,6 +832,13 @@ function animate() {
   if (dt > 0.05) dt = 0.05;
   const time = now / 1000;
 
+  // 枪械冷却与弹道淡出
+  if (gunCooldown > 0) gunCooldown = Math.max(0, gunCooldown - dt);
+  if (tracerTimer > 0) {
+    tracerTimer -= dt;
+    if (tracerTimer <= 0) tracer.visible = false;
+  }
+
   if (paused) {
     renderer.render(scene, camera);
     return;
@@ -763,6 +854,7 @@ function animate() {
   if (player.health < lastHealth) flashHurt();
   lastHealth = player.health;
   renderHealth();
+  updateThreatHud();
   if (player.dead) {
     player.respawn();
     mobs.clear();
@@ -912,8 +1004,10 @@ async function boot() {
   player.spawn(Math.floor(WORLD_SIZE / 2), Math.floor(WORLD_SIZE / 2));
   player.update(0);
   mobs.clear();
+  mobs.loadProgress(0);
   lastHealth = player.health;
   renderHealth();
+  updateThreatHud();
 
   loading.classList.add("hidden");
   booted = true;

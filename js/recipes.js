@@ -17,6 +17,7 @@ import {
   STONE_AXE,
   STONE_SHOVEL,
   STONE_SWORD,
+  PISTOL,
 } from "./blocks.js";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
@@ -39,4 +40,7 @@ export const RECIPES = [
   { out: { id: STONE_AXE, n: 1 }, in: [{ id: COBBLESTONE, n: 3 }, { id: STICK, n: 2 }] },
   { out: { id: STONE_SHOVEL, n: 1 }, in: [{ id: COBBLESTONE, n: 1 }, { id: STICK, n: 2 }] },
   { out: { id: STONE_SWORD, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },
+
+  // 武器
+  { out: { id: PISTOL, n: 1 }, in: [{ id: COBBLESTONE, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
 ];

@@ -23,6 +23,7 @@ export const STONE_PICKAXE = 19;
 export const STONE_AXE = 20;
 export const STONE_SHOVEL = 21;
 export const STONE_SWORD = 22;
+export const PISTOL = 23;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -51,6 +52,7 @@ export const TILES = [
   "stone_axe",
   "stone_shovel",
   "stone_sword",
+  "pistol",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -71,6 +73,7 @@ function def(id, name, textures, opts = {}) {
     requiresTool: opts.requiresTool ?? false,
     drop: opts.drop,
     use: opts.use ?? null,
+    gun: opts.gun ?? null,
     textures,
   };
 }
@@ -146,6 +149,13 @@ export const BLOCKS = {
   [STONE_AXE]: toolDef(STONE_AXE, "石斧", TILE.stone_axe, "axe", 5, 132),
   [STONE_SHOVEL]: toolDef(STONE_SHOVEL, "石锹", TILE.stone_shovel, "shovel", 5, 132),
   [STONE_SWORD]: toolDef(STONE_SWORD, "石剑", TILE.stone_sword, "sword", 5, 132),
+  [PISTOL]: def(PISTOL, "手枪", all(TILE.pistol), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    gun: { damage: 7, cooldown: 0.35, range: 40 },
+  }),
 };
 
 function toolDef(id, name, tile, type, speed, durability) {
@@ -174,6 +184,10 @@ export function isTool(id) {
   return id !== AIR && !!BLOCKS[id].use;
 }
 
+export function isGun(id) {
+  return id !== AIR && !!BLOCKS[id].gun;
+}
+
 // 物品栏：工具在前，方块在后
 export const HOTBAR = [
   WOOD_PICKAXE,
@@ -184,6 +198,7 @@ export const HOTBAR = [
   STONE_AXE,
   STONE_SHOVEL,
   STONE_SWORD,
+  PISTOL,
   GRASS,
   DIRT,
   STONE,
