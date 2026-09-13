@@ -34,6 +34,7 @@ const mineFillEl = document.getElementById("mineFill");
 const healthEl = document.getElementById("health");
 const hungerEl = document.getElementById("hunger");
 const hurtEl = document.getElementById("hurt");
+const headshotEl = document.getElementById("headshot");
 const threatEl = document.getElementById("threat");
 const commandEl = document.getElementById("command");
 const commandInput = document.getElementById("commandInput");
@@ -68,6 +69,19 @@ const highlight = new THREE.LineSegments(
 );
 highlight.visible = false;
 scene.add(highlight);
+
+// 爆头头部高亮框
+const headMarker = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+  new THREE.LineBasicMaterial({ color: 0xff3b2a, depthTest: false, transparent: true })
+);
+headMarker.visible = false;
+headMarker.frustumCulled = false;
+headMarker.renderOrder = 3;
+scene.add(headMarker);
+let headMarkerTimer = 0;
+let headMarkerTarget = null;
+const headMarkerPos = new THREE.Vector3();
 
 // 手枪弹道
 const tracerGeo = new THREE.BufferGeometry();
@@ -135,6 +149,15 @@ function buildHotbar() {
     hotbarEl.appendChild(slot);
   });
   updateHotbar();
+  layoutHud();
+}
+
+// 物品栏可能换行成多排，动态把生命/饥饿条和手持名称放到其上方
+function layoutHud() {
+  const barsBottom = 18 + hotbarEl.offsetHeight + 8;
+  healthEl.style.bottom = `${barsBottom}px`;
+  hungerEl.style.bottom = `${barsBottom}px`;
+  heldNameEl.style.bottom = `${barsBottom + 26}px`;
 }
 
 function updateHotbar() {
@@ -747,6 +770,23 @@ function flashHurt() {
   hurtFlashTimer = setTimeout(() => hurtEl.classList.remove("show"), 130);
 }
 
+// 爆头反馈：屏幕文字 + 头部高亮框
+let headshotHideTimer = null;
+function showHeadshot(mob) {
+  headshotEl.classList.remove("show");
+  void headshotEl.offsetWidth; // 重启动画
+  headshotEl.classList.add("show");
+  clearTimeout(headshotHideTimer);
+  headshotHideTimer = setTimeout(() => headshotEl.classList.remove("show"), 700);
+
+  if (mob) {
+    headMarkerTarget = mob;
+    headMarkerPos.set(mob.position.x, mob.position.y + mob.headY, mob.position.z);
+    headMarker.scale.setScalar(Math.max(0.4, mob.headR * 2));
+    headMarkerTimer = 0.22;
+  }
+}
+
 function formatClock(seconds) {
   const s = Math.max(0, Math.ceil(seconds));
   const m = Math.floor(s / 60);
@@ -1021,6 +1061,7 @@ function fireGun() {
   if (mobHit && (!blockHit || mobHit.distance < blockHit.t)) {
     end = origin.clone().addScaledVector(dir, mobHit.distance);
     headshot = mobHit.headshot;
+    if (headshot) showHeadshot(mobHit.mob);
     const dmg = headshot ? gun.damage * 2 : gun.damage;
     if (mobHit.mob.hurt(creative ? 1000 : dmg)) mobs.kill(mobHit.mob);
   } else if (blockHit) {
@@ -1038,7 +1079,9 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  layoutHud();
 });
+window.addEventListener("load", layoutHud);
 
 // ---------- 主循环 ----------
 let last = performance.now();
@@ -1060,6 +1103,20 @@ function animate() {
   if (tracerTimer > 0) {
     tracerTimer -= dt;
     if (tracerTimer <= 0) tracer.visible = false;
+  }
+  if (headMarkerTimer > 0) {
+    headMarkerTimer -= dt;
+    if (headMarkerTarget && headMarkerTarget.group.parent) {
+      headMarkerPos.set(
+        headMarkerTarget.position.x,
+        headMarkerTarget.position.y + headMarkerTarget.headY,
+        headMarkerTarget.position.z
+      );
+    }
+    headMarker.position.copy(headMarkerPos);
+    headMarker.visible = headMarkerTimer > 0;
+  } else if (headMarker.visible) {
+    headMarker.visible = false;
   }
 
   if (paused) {

@@ -49,6 +49,43 @@ body {
   transition: opacity 0.05s ease;
 }
 
+/* ---------- 爆头提示 ---------- */
+#headshot {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  z-index: 30;
+  transform: translate(-50%, -50%) scale(0.7);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #fff2d0;
+  text-shadow: 0 0 10px #ff3b2a, 0 0 4px #ff3b2a, 0 2px 5px #000;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+#headshot.show {
+  animation: headshot-pop 0.7s ease-out;
+}
+@keyframes headshot-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6) rotate(-6deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2) rotate(2deg);
+  }
+  40% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -65%) scale(1);
+  }
+}
+
 /* ---------- 准星 ---------- */
 #crosshair {
   position: fixed;
