@@ -728,4 +728,30 @@ kbd {
   font-size: 12px;
   color: #bfe6a8;
 }
+.recipe .req {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  color: #f0b86a;
+  background: rgba(240, 184, 106, 0.14);
+  border: 1px solid rgba(240, 184, 106, 0.35);
+}
+.craft-tip {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.craft-tip.ok {
+  color: #bfe6a8;
+  background: rgba(120, 190, 90, 0.14);
+  border: 1px solid rgba(140, 220, 110, 0.35);
+}
+.craft-tip.warn {
+  color: #f0b86a;
+  background: rgba(240, 184, 106, 0.12);
+  border: 1px solid rgba(240, 184, 106, 0.35);
+}
 

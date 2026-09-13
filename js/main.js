@@ -7,6 +7,7 @@ import { Inventory } from "./inventory.js?v=20260913b";
 import { RECIPES } from "./recipes.js?v=20260913b";
 import { ViewModel } from "./viewmodel.js?v=20260913b";
 import { MobManager } from "./mobs.js?v=20260913b";
+import { sfx } from "./audio.js?v=20260913b";
 
 const BUILD = "20260913b";
 console.log(`MineWeb build ${BUILD}`);
@@ -128,6 +129,7 @@ const toolDurability = new Map();
 let miningHeld = false;
 let mineKey = null;
 let mineProgress = 0;
+let digSoundTimer = 0;
 
 function itemCanvas(tileIndex, w = 16, h = 16) {
   const c = document.createElement("canvas");
@@ -216,17 +218,55 @@ function updateMode() {
 function selectSlot(i) {
   selected = (i + HOTBAR.length) % HOTBAR.length;
   updateHotbar();
+  sfx.play("click");
 }
 
 // ---------- 合成 ----------
+// 合成需要靠近工作台；仅少数基础配方（basic）可在背包直接制作
+const CRAFT_TABLE_RANGE = 6;
+
+function needsTable(recipe) {
+  return !recipe.basic;
+}
+
+function nearCraftingTable() {
+  const p = player.position;
+  const r = CRAFT_TABLE_RANGE;
+  const r2 = r * r;
+  const x0 = Math.floor(p.x - r);
+  const x1 = Math.floor(p.x + r);
+  const y0 = Math.floor(p.y - 3);
+  const y1 = Math.floor(p.y + 3);
+  const z0 = Math.floor(p.z - r);
+  const z1 = Math.floor(p.z + r);
+  for (let x = x0; x <= x1; x++) {
+    for (let y = y0; y <= y1; y++) {
+      for (let z = z0; z <= z1; z++) {
+        if (world.getBlock(x, y, z) !== CRAFTING_TABLE) continue;
+        const dx = x + 0.5 - p.x;
+        const dy = y + 0.5 - p.y;
+        const dz = z + 0.5 - p.z;
+        if (dx * dx + dy * dy + dz * dz <= r2) return true;
+      }
+    }
+  }
+  return false;
+}
+
 function canCraft(recipe) {
   return recipe.in.every((ing) => inventory.count(ing.id) >= ing.n);
 }
 
 function craft(recipe) {
   if (!canCraft(recipe)) return;
+  if (needsTable(recipe) && !nearCraftingTable()) {
+    sfx.play("click");
+    toast("合成需要靠近工作台");
+    return;
+  }
   for (const ing of recipe.in) inventory.remove(ing.id, ing.n);
   inventory.add(recipe.out.id, recipe.out.n);
+  sfx.play("craft");
   renderInventory();
   renderRecipes();
   updateHotbar();
@@ -245,10 +285,21 @@ function recipeCell(id, n) {
 
 function renderRecipes() {
   recipeListEl.innerHTML = "";
+  const nearTable = nearCraftingTable();
+
+  const tip = document.createElement("div");
+  tip.className = "craft-tip " + (nearTable ? "ok" : "warn");
+  tip.textContent = nearTable
+    ? "已连接工作台，可合成全部配方"
+    : "未连接工作台：仅可制作木板 / 木棍 / 工作台，其余需靠近工作台";
+  recipeListEl.appendChild(tip);
+
   for (const recipe of RECIPES) {
+    const gate = needsTable(recipe) && !nearTable;
     const affordable = canCraft(recipe);
+    const usable = affordable && !gate;
     const row = document.createElement("button");
-    row.className = "recipe" + (affordable ? "" : " disabled");
+    row.className = "recipe" + (usable ? "" : " disabled");
 
     const flow = document.createElement("div");
     flow.className = "flow";
@@ -273,7 +324,13 @@ function renderRecipes() {
 
     row.appendChild(flow);
     row.appendChild(name);
-    if (affordable) row.addEventListener("click", () => craft(recipe));
+    if (gate) {
+      const req = document.createElement("span");
+      req.className = "req";
+      req.textContent = "需工作台";
+      row.appendChild(req);
+    }
+    if (usable) row.addEventListener("click", () => craft(recipe));
     recipeListEl.appendChild(row);
   }
 }
@@ -365,6 +422,7 @@ function sniffIron() {
   const pz = Math.floor(player.position.z);
   const hit = world.findNearestBlock(px, py, pz, IRON_ORE, ORE_SNIFF_RADIUS);
   if (!hit) {
+    sfx.play("click");
     toast(`半径 ${ORE_SNIFF_RADIUS} 格内没有铁矿信号（铁矿只生成在 Y 2~20，往深处挖）`);
     return;
   }
@@ -377,6 +435,7 @@ function sniffIron() {
   oreMarker.visible = true;
   oreMarkerTimer = ORE_MARKER_SECONDS;
   oreMarker.material.opacity = 1;
+  sfx.play("sniff");
   toast(`铁矿信号：${dist} 格 · ${compassDir(dx, dz)}方 · ${vert} · 坐标 (${hit.x}, ${hit.y}, ${hit.z})`);
 }
 
@@ -387,6 +446,10 @@ const COMMANDS = {
     else toast("附近没有合适的位置生成怪物");
   },
   "铁矿嗅探器": () => sniffIron(),
+  "静音": () => {
+    const m = sfx.toggleMute();
+    toast(m ? "音效已关闭" : "音效已开启");
+  },
 };
 
 function openCommand() {
@@ -772,6 +835,24 @@ function updateMineBar() {
   mineFillEl.style.width = `${Math.min(1, mineProgress) * 100}%`;
 }
 
+// 脚步声：按移动速度与地面材质定节奏
+let stepTimer = 0;
+function updateFootsteps(dt) {
+  const speed = Math.hypot(player.velocity.x, player.velocity.z);
+  const sprinting = player.keys.has("ShiftLeft") || player.keys.has("ShiftRight");
+  if (player.onGround && !player.inWater && speed > 1.2) {
+    stepTimer -= dt;
+    if (stepTimer <= 0) {
+      const p = player.position;
+      const ground = world.getBlock(Math.floor(p.x), Math.floor(p.y - 0.2), Math.floor(p.z));
+      sfx.play("step", { material: blockMaterial(ground) });
+      stepTimer = sprinting ? 0.26 : 0.38;
+    }
+  } else {
+    stepTimer = Math.min(stepTimer, 0.1);
+  }
+}
+
 const HEART_COUNT = 10;
 
 function renderHealth() {
@@ -851,7 +932,10 @@ function updateThreatHud() {
 
 // 阶段推进时提示玩家
 mobs.onStageChange = (stage, idx) => {
-  if (idx > 0) toast(`怪物变得更强了：${stage.name}`);
+  if (idx > 0) {
+    sfx.play("ominous");
+    toast(`怪物变得更强了：${stage.name}`);
+  }
 };
 
 // 怪物/猎物死亡：结算掉落
@@ -867,6 +951,7 @@ mobs.onDeath = (mob) => {
   }
   if (gained.length) {
     updateHotbar();
+    sfx.play("pop");
     toast(`获得 ${gained.join("、")}`);
   }
 };
@@ -962,18 +1047,31 @@ function consumeDurability() {
   }
 }
 
+// 根据方块偏好工具归类音效材质
+function blockMaterial(id) {
+  const tool = BLOCKS[id] && BLOCKS[id].tool;
+  if (tool === "axe") return "wood";
+  if (tool === "shovel") return "dirt";
+  if (tool === "pickaxe") return "stone";
+  return "grass";
+}
+
 // 完成一次挖掘：判定掉落 + 耐久
 function finishMine(x, y, z) {
   const id = breakAt(x, y, z);
   if (id === null) return;
   player.addExhaustion(0.4);
+  sfx.play("break", { material: blockMaterial(id) });
+  let gained = false;
   if (toolYields(id)) {
     const drop = BLOCKS[id].drop === undefined ? id : BLOCKS[id].drop;
     if (drop !== null) {
       inventory.add(drop, 1);
       updateHotbar();
+      gained = true;
     }
   }
+  if (gained) sfx.play("pop");
   if (!creative) consumeDurability();
 }
 
@@ -983,11 +1081,13 @@ function breakBlock() {
   if (!hit) return null;
   const id = breakAt(hit.x, hit.y, hit.z);
   if (id === null) return null;
+  sfx.play("break", { material: blockMaterial(id) });
   if (!creative && toolYields(id)) {
     const drop = BLOCKS[id].drop === undefined ? id : BLOCKS[id].drop;
     if (drop !== null) {
       inventory.add(drop, 1);
       updateHotbar();
+      sfx.play("pop");
     }
   }
   return id;
@@ -1017,6 +1117,7 @@ function placeBlock() {
   if (!creative && inventory.count(blockId) <= 0) return;
   world.setBlock(x, y, z, blockId);
   world.remeshAround(x, y, z);
+  sfx.play("place", { material: blockMaterial(blockId) });
   if (!creative) {
     inventory.remove(blockId, 1);
     updateHotbar();
@@ -1039,6 +1140,7 @@ function tryEat() {
     updateHotbar();
   }
   player.eat(BLOCKS[id].food.hunger);
+  sfx.play("eat");
   renderHunger();
   return true;
 }
@@ -1060,6 +1162,7 @@ function tryUseItem() {
       updateHotbar();
     }
     toast(`烤好了：${BLOCKS[cookTo].name}`);
+    sfx.play("pop");
     return true;
   }
 
@@ -1075,6 +1178,7 @@ function tryUseItem() {
     if (intersectsPlayer(x, y, z)) return true;
     world.setBlock(x, y, z, CAMPFIRE);
     world.remeshAround(x, y, z);
+    sfx.play("place", { material: "stone" });
     toast("生起了火堆");
     return true;
   }
@@ -1094,7 +1198,10 @@ function tryAttack() {
   if (blockHit && blockHit.t < mobHit.distance) return false;
 
   player.addExhaustion(0.3);
-  if (mobHit.mob.hurt(creative ? 1000 : meleeDamage())) mobs.kill(mobHit.mob);
+  const dead = mobHit.mob.hurt(creative ? 1000 : meleeDamage());
+  sfx.play(dead ? "mob_death" : "mob_hurt");
+  sfx.play("hit");
+  if (dead) mobs.kill(mobHit.mob);
   return true;
 }
 
@@ -1141,6 +1248,8 @@ function fireGun() {
 
   player.addExhaustion(0.1);
   showTracer(origin, end, headshot);
+  sfx.play("gun");
+  if (headshot) sfx.play("headshot");
   viewmodel.kick();
   return true;
 }
@@ -1204,16 +1313,21 @@ function animate() {
   if (!craftingOpen) {
     player.update(dt);
     mobs.update(dt, player);
+    updateFootsteps(dt);
   }
   viewmodel.update(time);
 
   // 受伤 / 死亡反馈
-  if (player.health < lastHealth) flashHurt();
+  if (player.health < lastHealth) {
+    flashHurt();
+    sfx.play("hurt");
+  }
   lastHealth = player.health;
   renderHealth();
   renderHunger();
   updateThreatHud();
   if (player.dead) {
+    sfx.play("death");
     player.respawn();
     mobs.clear();
     lastHealth = player.health;
@@ -1248,6 +1362,7 @@ function animate() {
       if (key !== mineKey) {
         mineKey = key;
         mineProgress = 0;
+        digSoundTimer = 0;
         if (id !== BEDROCK && !canMine(id)) {
           const t = heldTool();
           const need = neededToolName(id);
@@ -1263,6 +1378,11 @@ function animate() {
         const speed = miningSpeedFor(id);
         const hardness = Math.max(0.05, BLOCKS[id].hardness);
         mineProgress += (dt * speed) / hardness;
+        digSoundTimer -= dt;
+        if (digSoundTimer <= 0) {
+          sfx.play("dig", { material: blockMaterial(id) });
+          digSoundTimer = 0.22;
+        }
         if (mineProgress >= 1) {
           finishMine(hit.x, hit.y, hit.z);
           mineProgress = 0;

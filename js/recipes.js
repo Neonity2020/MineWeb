@@ -27,10 +27,11 @@ import {
 } from "./blocks.js?v=20260913b";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
+// basic: true 表示无需工作台即可在背包直接合成（仅用于开局搭建工作台的基础配方）
 export const RECIPES = [
-  { out: { id: PLANK, n: 4 }, in: [{ id: LOG, n: 1 }] },
-  { out: { id: STICK, n: 4 }, in: [{ id: PLANK, n: 2 }] },
-  { out: { id: CRAFTING_TABLE, n: 1 }, in: [{ id: PLANK, n: 4 }] },
+  { out: { id: PLANK, n: 4 }, in: [{ id: LOG, n: 1 }], basic: true },
+  { out: { id: STICK, n: 4 }, in: [{ id: PLANK, n: 2 }], basic: true },
+  { out: { id: CRAFTING_TABLE, n: 1 }, in: [{ id: PLANK, n: 4 }], basic: true },
   { out: { id: STONE_BRICKS, n: 4 }, in: [{ id: COBBLESTONE, n: 4 }] },
   { out: { id: GLASS, n: 1 }, in: [{ id: SAND, n: 2 }] },
   { out: { id: COBBLESTONE, n: 1 }, in: [{ id: STONE, n: 1 }] },
