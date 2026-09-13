@@ -18,6 +18,7 @@ import {
   STONE_SHOVEL,
   STONE_SWORD,
   PISTOL,
+  FLINT_STEEL,
 } from "./blocks.js";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
@@ -43,4 +44,7 @@ export const RECIPES = [
 
   // 武器
   { out: { id: PISTOL, n: 1 }, in: [{ id: COBBLESTONE, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
+
+  // 生火
+  { out: { id: FLINT_STEEL, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },
 ];

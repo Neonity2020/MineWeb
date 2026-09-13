@@ -26,6 +26,10 @@ export const STONE_SWORD = 22;
 export const PISTOL = 23;
 export const RAW_PORK = 24;
 export const RAW_CHICKEN = 25;
+export const FLINT_STEEL = 26;
+export const CAMPFIRE = 27;
+export const COOKED_PORK = 28;
+export const COOKED_CHICKEN = 29;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -57,6 +61,11 @@ export const TILES = [
   "pistol",
   "raw_pork",
   "raw_chicken",
+  "flint_steel",
+  "campfire_top",
+  "campfire_side",
+  "cooked_pork",
+  "cooked_chicken",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -79,6 +88,7 @@ function def(id, name, textures, opts = {}) {
     use: opts.use ?? null,
     gun: opts.gun ?? null,
     food: opts.food ?? null,
+    cookTo: opts.cookTo ?? null,
     textures,
   };
 }
@@ -167,6 +177,7 @@ export const BLOCKS = {
     renderPass: "none",
     placeable: false,
     food: { hunger: 6 },
+    cookTo: COOKED_PORK,
   }),
   [RAW_CHICKEN]: def(RAW_CHICKEN, "生鸡肉", all(TILE.raw_chicken), {
     solid: false,
@@ -174,7 +185,34 @@ export const BLOCKS = {
     renderPass: "none",
     placeable: false,
     food: { hunger: 4 },
+    cookTo: COOKED_CHICKEN,
   }),
+  [FLINT_STEEL]: def(FLINT_STEEL, "打火石", all(TILE.flint_steel), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+  }),
+  [COOKED_PORK]: def(COOKED_PORK, "熟猪排", all(TILE.cooked_pork), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    food: { hunger: 10 },
+  }),
+  [COOKED_CHICKEN]: def(COOKED_CHICKEN, "熟鸡肉", all(TILE.cooked_chicken), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    food: { hunger: 8 },
+  }),
+  [CAMPFIRE]: def(
+    CAMPFIRE,
+    "火堆",
+    topSide(TILE.campfire_top, TILE.campfire_side, TILE.log_top),
+    { hardness: 0.5, tool: "axe", drop: null }
+  ),
 };
 
 function toolDef(id, name, tile, type, speed, durability) {
@@ -222,8 +260,11 @@ export const HOTBAR = [
   STONE_SHOVEL,
   STONE_SWORD,
   PISTOL,
+  FLINT_STEEL,
   RAW_PORK,
   RAW_CHICKEN,
+  COOKED_PORK,
+  COOKED_CHICKEN,
   GRASS,
   DIRT,
   STONE,

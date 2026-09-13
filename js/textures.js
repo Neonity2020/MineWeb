@@ -161,6 +161,49 @@ const PAINTERS = {
     if (!edge && x + y === 15) return [...shade([236, 210, 186], n), 255];
     return [...shade(edge ? [176, 138, 104] : [230, 196, 166], n), 255];
   },
+  cooked_pork(x, y, rnd) {
+    if (x < 2 || x > 13 || y < 4 || y > 11) return [0, 0, 0, 0];
+    const edge = x === 2 || x === 13 || y === 4 || y === 11;
+    const n = rnd() * 20 - 10;
+    if (!edge && (x + y) % 5 === 0) return [...shade([150, 104, 66], n), 255];
+    return [...shade(edge ? [104, 62, 34] : [146, 92, 50], n), 255];
+  },
+  cooked_chicken(x, y, rnd) {
+    if (x < 3 || x > 12 || y < 3 || y > 12) return [0, 0, 0, 0];
+    const edge = x === 3 || x === 12 || y === 3 || y === 12;
+    const n = rnd() * 20 - 10;
+    if (!edge && x + y === 15) return [...shade([168, 122, 74], n), 255];
+    return [...shade(edge ? [126, 84, 46] : [176, 128, 78], n), 255];
+  },
+  flint_steel(x, y, rnd) {
+    const n = rnd() * 18 - 9;
+    // 钢制打火镰（浅灰）呈 L 形
+    if ((x >= 3 && x <= 11 && y >= 4 && y <= 6) || (x >= 3 && x <= 5 && y >= 6 && y <= 11)) {
+      return [...shade([176, 180, 188], n), 255];
+    }
+    // 燧石（深灰）
+    if (x >= 8 && x <= 12 && y >= 7 && y <= 11) {
+      return [...shade([70, 74, 82], n), 255];
+    }
+    return [0, 0, 0, 0];
+  },
+  campfire_top(x, y, rnd) {
+    const dx = x - 7.5;
+    const dy = y - 7.5;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    const n = rnd() * 26 - 13;
+    if (d < 2.2) return [...shade([255, 232, 150], n), 255];
+    if (d < 4.0) return [...shade([246, 166, 60], n), 255];
+    if (d < 6.0) return [...shade([206, 96, 34], n), 255];
+    return [...shade([74, 46, 28], n), 255];
+  },
+  campfire_side(x, y, rnd) {
+    const n = rnd() * 22 - 11;
+    if (y < 3) return [...shade([232, 140, 52], n), 255];
+    if (y < 5) return [...shade([180, 92, 34], n), 255];
+    const stripe = x % 5 === 0 ? -30 : 0;
+    return [...shade([112, 76, 42], n + stripe), 255];
+  },
 };
 
 // 工具图标：斜向木柄 + 不同形状的头部

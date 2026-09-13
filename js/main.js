@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js";
 import { Player } from "./player.js";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, isTool, isPlaceable, isGun, isFood } from "./blocks.js";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js";
 import { drawTileTo } from "./textures.js";
 import { Inventory } from "./inventory.js";
 import { RECIPES } from "./recipes.js";
@@ -682,6 +682,7 @@ document.addEventListener("mousedown", (e) => {
       mineProgress = 0;
     }
   } else if (e.button === 2) {
+    if (tryUseItem()) return;
     if (tryEat()) return;
     placeBlock();
   }
@@ -937,6 +938,45 @@ function tryEat() {
   player.eat(BLOCKS[id].food.hunger);
   renderHunger();
   return true;
+}
+
+// 右键使用道具：打火石生火 / 生肉在火堆上烤熟
+function tryUseItem() {
+  const hit = world.raycast(player.eyePosition, player.getLookDirection(), 6);
+  if (!hit) return false;
+  const held = HOTBAR[selected];
+  const target = world.getBlock(hit.x, hit.y, hit.z);
+
+  // 烤肉：手持生肉右键火堆
+  const cookTo = BLOCKS[held] && BLOCKS[held].cookTo;
+  if (cookTo && target === CAMPFIRE) {
+    if (!creative && inventory.count(held) <= 0) return true;
+    if (!creative) {
+      inventory.remove(held, 1);
+      inventory.add(cookTo, 1);
+      updateHotbar();
+    }
+    toast(`烤好了：${BLOCKS[cookTo].name}`);
+    return true;
+  }
+
+  // 生火：手持打火石右键实心方块，在上方点起火堆
+  if (held === FLINT_STEEL && target !== CAMPFIRE) {
+    if (!creative && inventory.count(FLINT_STEEL) <= 0) return false;
+    const x = hit.x + hit.nx;
+    const y = hit.y + hit.ny;
+    const z = hit.z + hit.nz;
+    if (!world.inBounds(x, y, z)) return true;
+    if (!isSolid(target)) return true;
+    if (world.getBlock(x, y, z) !== AIR) return true;
+    if (intersectsPlayer(x, y, z)) return true;
+    world.setBlock(x, y, z, CAMPFIRE);
+    world.remeshAround(x, y, z);
+    toast("生起了火堆");
+    return true;
+  }
+
+  return false;
 }
 
 // 挥击准星内的怪物；命中返回 true（此时不挖掘方块）
