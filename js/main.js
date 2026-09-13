@@ -33,6 +33,8 @@ const mineFillEl = document.getElementById("mineFill");
 const healthEl = document.getElementById("health");
 const hurtEl = document.getElementById("hurt");
 const threatEl = document.getElementById("threat");
+const commandEl = document.getElementById("command");
+const commandInput = document.getElementById("commandInput");
 
 const SAVE_KEY = "mineweb.save.v1";
 
@@ -83,6 +85,7 @@ let gunCooldown = 0;
 let selected = 0;
 let creative = false;
 let craftingOpen = false;
+let commandOpen = false;
 let paused = true;
 let booted = false;
 let animating = false;
@@ -305,6 +308,58 @@ craftingEl.addEventListener("mousedown", (e) => {
   if (e.target === craftingEl) closeCrafting();
 });
 
+// ---------- 命令模式 ----------
+const COMMANDS = {
+  "一大波": () => {
+    const n = mobs.spawnWave(player, 20);
+    if (n > 0) toast(`一大波怪物来袭！（${n} 只）`);
+    else toast("附近没有合适的位置生成怪物");
+  },
+};
+
+function openCommand() {
+  if (commandOpen || craftingOpen) return;
+  commandOpen = true;
+  player.keys.clear();
+  commandInput.value = "";
+  commandEl.classList.remove("hidden");
+  if (document.pointerLockElement === canvas) unlockPointer();
+  commandInput.focus();
+}
+
+function closeCommand() {
+  if (!commandOpen) return;
+  commandOpen = false;
+  commandEl.classList.add("hidden");
+  commandInput.blur();
+  lockPointer();
+}
+
+function runCommand(text) {
+  const cmd = text.trim();
+  closeCommand();
+  if (!cmd) return;
+  const fn = COMMANDS[cmd];
+  if (fn) fn();
+  else toast(`未知命令：${cmd}`);
+}
+
+commandInput.addEventListener("keydown", (e) => {
+  e.stopPropagation();
+  // 输入法组字中的 Enter 不触发命令
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    runCommand(commandInput.value);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    closeCommand();
+  }
+});
+commandEl.addEventListener("mousedown", (e) => {
+  if (e.target === commandEl) closeCommand();
+});
+
 // ---------- 存档 ----------
 function readSave() {
   try {
@@ -448,10 +503,10 @@ document.addEventListener("pointerlockchange", () => {
     mineProgress = 0;
     updateMineBar();
   }
-  // 未锁定鼠标（菜单 / 合成面板）时暂停世界，锁定后恢复
+  // 未锁定鼠标（菜单 / 合成面板 / 命令模式）时暂停世界，锁定后恢复
   paused = !locked;
-  // 打开合成面板时释放鼠标，此时不要弹出开始菜单
-  overlay.classList.toggle("hidden", locked || craftingOpen);
+  // 打开合成面板/命令模式时释放鼠标，此时不要弹出开始菜单
+  overlay.classList.toggle("hidden", locked || craftingOpen || commandOpen);
 });
 
 document.addEventListener("mousemove", (e) => {
@@ -461,6 +516,7 @@ document.addEventListener("mousemove", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (commandOpen) return;
   if ((e.ctrlKey || e.metaKey) && e.code === "KeyS") {
     e.preventDefault();
     saveGame();
@@ -488,6 +544,12 @@ document.addEventListener("keydown", (e) => {
     return;
   }
   if (craftingOpen) return;
+
+  if (e.code === "Slash" && document.pointerLockElement === canvas) {
+    e.preventDefault();
+    openCommand();
+    return;
+  }
 
   if (e.code === "Space") e.preventDefault();
   if (e.code.startsWith("Digit")) {

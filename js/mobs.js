@@ -450,12 +450,11 @@ export class MobManager {
     mob.dispose();
   }
 
-  spawn(player) {
-    const stage = this.currentStage;
-    if (!stage.types.length) return null;
-    for (let attempt = 0; attempt < 16; attempt++) {
+  // 尝试在玩家周围 [minDist, maxDist] 的环形地带生成指定类型之一
+  _spawnAt(player, minDist, maxDist, types) {
+    for (let attempt = 0; attempt < 20; attempt++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 14 + Math.random() * 14;
+      const dist = minDist + Math.random() * (maxDist - minDist);
       const x = Math.floor(player.position.x + Math.cos(ang) * dist);
       const z = Math.floor(player.position.z + Math.sin(ang) * dist);
       if (x < 4 || z < 4 || x >= WORLD_SIZE - 4 || z >= WORLD_SIZE - 4) continue;
@@ -465,13 +464,31 @@ export class MobManager {
       if (this.world.getBlock(x, y, z) !== AIR) continue;
       if (this.world.getBlock(x, y + 1, z) !== AIR) continue;
 
-      const type = stage.types[Math.floor(Math.random() * stage.types.length)];
+      const type = types[Math.floor(Math.random() * types.length)];
       const mob = new Mob(this.world, type, new THREE.Vector3(x + 0.5, y, z + 0.5));
       this.mobs.push(mob);
       this.scene.add(mob.group);
       return mob;
     }
     return null;
+  }
+
+  spawn(player) {
+    const stage = this.currentStage;
+    if (!stage.types.length) return null;
+    return this._spawnAt(player, 14, 28, stage.types);
+  }
+
+  // /命令用：无视阶段与上限，直接拉一大波怪
+  spawnWave(player, count = 20) {
+    const types = this.currentStage.types.length
+      ? this.currentStage.types
+      : ["zombie", "slime", "elite"];
+    let n = 0;
+    for (let i = 0; i < count; i++) {
+      if (this._spawnAt(player, 8, 20, types)) n++;
+    }
+    return n;
   }
 
   update(dt, player) {
