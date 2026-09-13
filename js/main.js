@@ -6,6 +6,7 @@ import { drawTileTo } from "./textures.js";
 import { Inventory } from "./inventory.js";
 import { RECIPES } from "./recipes.js";
 import { ViewModel } from "./viewmodel.js";
+import { MobManager } from "./mobs.js";
 
 const canvas = document.getElementById("game");
 const overlay = document.getElementById("overlay");
@@ -29,6 +30,8 @@ const toastEl = document.getElementById("toast");
 const heldNameEl = document.getElementById("heldName");
 const minebarEl = document.getElementById("minebar");
 const mineFillEl = document.getElementById("mineFill");
+const healthEl = document.getElementById("health");
+const hurtEl = document.getElementById("hurt");
 
 const SAVE_KEY = "mineweb.save.v1";
 
@@ -50,6 +53,7 @@ scene.add(camera);
 const world = new World(20240612);
 const player = new Player(world, camera);
 const viewmodel = new ViewModel(camera);
+const mobs = new MobManager(world, scene);
 
 // 方块高亮框
 const highlightGeo = new THREE.BoxGeometry(1.002, 1.002, 1.002);
@@ -329,6 +333,7 @@ function saveGame(silent = false) {
       z: player.position.z,
       yaw: player.yaw,
       pitch: player.pitch,
+      health: player.health,
     },
     creative,
     selected,
@@ -361,6 +366,11 @@ async function loadGame() {
     player.velocity.set(0, 0, 0);
     player.yaw = save.player.yaw || 0;
     player.pitch = save.player.pitch || 0;
+    player.spawnPoint.copy(player.position);
+    player.health = typeof save.player.health === "number" ? save.player.health : player.maxHealth;
+    player.dead = false;
+    player.hurtTimer = 0;
+    player.regenTimer = 0;
   }
   inventory.counts = new Map(save.inventory || []);
   creative = !!save.creative;
@@ -368,6 +378,9 @@ async function loadGame() {
   updateMode();
   updateHotbar();
   player.update(0);
+  mobs.clear();
+  lastHealth = player.health;
+  renderHealth();
 
   setProgress(100, "读取完成");
   await frame();
@@ -510,6 +523,8 @@ document.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("mousedown", (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (e.button === 0) {
+    // 优先攻击准星内的怪物
+    if (tryAttack()) return;
     // 创造模式立即破坏；生存模式按住左键逐步挖掘
     if (creative) breakBlock();
     else {
@@ -535,6 +550,33 @@ function updateMineBar() {
   const active = miningHeld && mineProgress > 0 && !creative;
   minebarEl.classList.toggle("active", active);
   mineFillEl.style.width = `${Math.min(1, mineProgress) * 100}%`;
+}
+
+const HEART_COUNT = 10;
+
+function renderHealth() {
+  if (healthEl.childElementCount !== HEART_COUNT) {
+    healthEl.innerHTML = "";
+    for (let i = 0; i < HEART_COUNT; i++) {
+      const s = document.createElement("span");
+      s.className = "heart";
+      s.textContent = "\u2665";
+      healthEl.appendChild(s);
+    }
+  }
+  for (let i = 0; i < HEART_COUNT; i++) {
+    const v = player.health - i * 2;
+    const el = healthEl.children[i];
+    el.classList.toggle("full", v >= 2);
+    el.classList.toggle("half", v === 1);
+  }
+}
+
+let hurtFlashTimer = null;
+function flashHurt() {
+  hurtEl.classList.add("show");
+  clearTimeout(hurtFlashTimer);
+  hurtFlashTimer = setTimeout(() => hurtEl.classList.remove("show"), 130);
 }
 
 // ---------- 交互 ----------
@@ -663,6 +705,27 @@ function placeBlock() {
   }
 }
 
+const ATTACK_REACH = 3.5;
+
+// 挥击准星内的怪物；命中返回 true（此时不挖掘方块）
+function tryAttack() {
+  const origin = player.eyePosition;
+  const dir = player.getLookDirection();
+  const mobHit = mobs.raycast(origin, dir, ATTACK_REACH);
+  if (!mobHit) return false;
+
+  // 被方块挡住则打不到
+  const blockHit = world.raycast(origin, dir, ATTACK_REACH);
+  if (blockHit) {
+    const bc = new THREE.Vector3(blockHit.x + 0.5, blockHit.y + 0.5, blockHit.z + 0.5);
+    if (origin.distanceTo(bc) < mobHit.distance) return false;
+  }
+
+  mobHit.mob.hurt(creative ? 1000 : 4);
+  if (mobHit.mob.dead) mobs.remove(mobHit.mob);
+  return true;
+}
+
 // ---------- 自适应 ----------
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -675,6 +738,7 @@ let last = performance.now();
 let fpsAccum = 0;
 let fpsFrames = 0;
 let waterTimer = 0;
+let lastHealth = player.maxHealth;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -689,8 +753,22 @@ function animate() {
     return;
   }
 
-  if (!craftingOpen) player.update(dt);
+  if (!craftingOpen) {
+    player.update(dt);
+    mobs.update(dt, player);
+  }
   viewmodel.update(time);
+
+  // 受伤 / 死亡反馈
+  if (player.health < lastHealth) flashHurt();
+  lastHealth = player.health;
+  renderHealth();
+  if (player.dead) {
+    player.respawn();
+    mobs.clear();
+    lastHealth = player.health;
+    toast("你被怪物击败了，已在出生点复活");
+  }
 
   underwaterEl.classList.toggle("active", player.eyeInWater);
 
@@ -833,6 +911,9 @@ async function boot() {
 
   player.spawn(Math.floor(WORLD_SIZE / 2), Math.floor(WORLD_SIZE / 2));
   player.update(0);
+  mobs.clear();
+  lastHealth = player.health;
+  renderHealth();
 
   loading.classList.add("hidden");
   booted = true;

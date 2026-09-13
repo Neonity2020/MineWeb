@@ -36,6 +36,12 @@ export class Player {
     this.eyeInWater = false;
     this.keys = new Set();
     this.sensitivity = 0.0022;
+    this.maxHealth = 20;
+    this.health = 20;
+    this.hurtTimer = 0;
+    this.regenTimer = 0;
+    this.dead = false;
+    this.spawnPoint = new THREE.Vector3(0, 40, 0);
   }
 
   spawn(x, z) {
@@ -43,6 +49,29 @@ export class Player {
     this.velocity.set(0, 0, 0);
     this.yaw = Math.PI * 0.25;
     this.pitch = -0.15;
+    this.spawnPoint.copy(this.position);
+    this.health = this.maxHealth;
+    this.dead = false;
+    this.hurtTimer = 0;
+    this.regenTimer = 0;
+  }
+
+  damage(n) {
+    if (this.dead || n <= 0) return;
+    this.health = Math.max(0, this.health - n);
+    this.hurtTimer = 0.4;
+    this.regenTimer = 0;
+    if (this.health <= 0) this.dead = true;
+  }
+
+  respawn() {
+    this.position.copy(this.spawnPoint);
+    this.velocity.set(0, 0, 0);
+    this.health = this.maxHealth;
+    this.dead = false;
+    this.hurtTimer = 0;
+    this.regenTimer = 0;
+    this.onGround = false;
   }
 
   handleMouseMove(dx, dy) {
@@ -187,6 +216,18 @@ export class Player {
 
     this.eyeInWater = this.isEyeInWater();
     this.updateCamera();
+
+    // 生命回复：脱离战斗一段时间后缓慢回血
+    if (this.hurtTimer > 0) {
+      this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+      this.regenTimer = 0;
+    } else if (!this.dead && this.health < this.maxHealth) {
+      this.regenTimer += dt;
+      if (this.regenTimer >= 4) {
+        this.regenTimer = 0;
+        this.health += 1;
+      }
+    }
   }
 
   moveAxis(axis, delta) {

@@ -34,6 +34,21 @@ body {
   opacity: 1;
 }
 
+/* ---------- 受伤滤镜 ---------- */
+#hurt {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  background: radial-gradient(circle at 50% 50%, rgba(180, 20, 20, 0) 35%, rgba(170, 15, 15, 0.55) 100%);
+}
+#hurt.show {
+  opacity: 1;
+  transition: opacity 0.05s ease;
+}
+
 /* ---------- 准星 ---------- */
 #crosshair {
   position: fixed;
@@ -176,6 +191,34 @@ body {
   border-color: #fff;
   background: rgba(255, 255, 255, 0.22);
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- 生命值 ---------- */
+#health {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  z-index: 8;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  padding: 2px 6px;
+  pointer-events: none;
+  user-select: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #3a0d0d;
+  text-shadow: 0 1px 2px #000, 0 0 2px #000;
+}
+.heart.full {
+  color: #ff3b3b;
+}
+.heart.half {
+  color: #3a0d0d;
+  background: linear-gradient(90deg, #ff3b3b 50%, transparent 50%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .slot canvas {
   position: absolute;
