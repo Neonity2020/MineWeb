@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { Noise, makeRng } from "./noise.js?v=20260913";
-import { createAtlasTexture } from "./textures.js?v=20260913";
+import { Noise, makeRng } from "./noise.js?v=20260913b";
+import { createAtlasTexture } from "./textures.js?v=20260913b";
 import {
   AIR,
   WATER,
@@ -15,7 +15,7 @@ import {
   BLOCKS,
   TILE_COUNT,
   isOpaque,
-} from "./blocks.js?v=20260913";
+} from "./blocks.js?v=20260913b";
 
 export const WORLD_SIZE = 256;
 export const HEIGHT = 64;

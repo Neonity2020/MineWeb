@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260913";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260913b";
 
 const SIZE = 16;
 

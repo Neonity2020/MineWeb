@@ -24,7 +24,7 @@ import {
   IRON_SWORD,
   PISTOL,
   FLINT_STEEL,
-} from "./blocks.js?v=20260913";
+} from "./blocks.js?v=20260913b";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
 export const RECIPES = [

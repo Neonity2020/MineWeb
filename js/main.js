@@ -1,14 +1,15 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js?v=20260913";
-import { Player } from "./player.js?v=20260913";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260913";
-import { drawTileTo } from "./textures.js?v=20260913";
-import { Inventory } from "./inventory.js?v=20260913";
-import { RECIPES } from "./recipes.js?v=20260913";
-import { ViewModel } from "./viewmodel.js?v=20260913";
-import { MobManager } from "./mobs.js?v=20260913";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js?v=20260913b";
+import { Player } from "./player.js?v=20260913b";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260913b";
+import { drawTileTo } from "./textures.js?v=20260913b";
+import { Inventory } from "./inventory.js?v=20260913b";
+import { RECIPES } from "./recipes.js?v=20260913b";
+import { ViewModel } from "./viewmodel.js?v=20260913b";
+import { MobManager } from "./mobs.js?v=20260913b";
 
-console.log("MineWeb build 20260913");
+const BUILD = "20260913b";
+console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
 const overlay = document.getElementById("overlay");
@@ -190,10 +191,10 @@ function updateHotbar() {
     }
   });
   const held = HOTBAR[selected];
-  heldNameEl.textContent = BLOCKS[held].name;
-  // 生存模式下未持有的工具/枪械/食物不显示手持模型，只留手臂
   const countable = isTool(held) || isGun(held) || isFood(held);
   const heldOwned = creative || !countable || inventory.count(held) > 0;
+  heldNameEl.textContent = BLOCKS[held].name + (countable && !heldOwned ? "（未持有）" : "");
+  // 生存模式下未持有的工具/枪械/食物不显示手持模型，只留手臂
   viewmodel.showItem(heldOwned ? held : AIR);
 }
 
@@ -1199,7 +1200,14 @@ function animate() {
         mineKey = key;
         mineProgress = 0;
         if (id !== BEDROCK && !canMine(id)) {
-          toast(`需要${neededToolName(id)}（或更好）才能开采`);
+          const t = heldTool();
+          const need = neededToolName(id);
+          if (!t) toast(`需要${need}（当前未持有，请先合成）`);
+          else toast(`需要${need}，当前手持${BLOCKS[t.id].name}`);
+          console.log(
+            `[挖矿] 无法开采 ${BLOCKS[id].name}(id=${id}) 槽位=${selected} ` +
+              `选中=${BLOCKS[HOTBAR[selected]].name} 持有=${inventory.count(HOTBAR[selected])} 工具=${JSON.stringify(t)}`
+          );
         }
       }
       if (id !== BEDROCK && canMine(id)) {
@@ -1229,7 +1237,7 @@ function animate() {
     fpsFrames = 0;
   }
   const p = player.position;
-  coordsEl.textContent = `XYZ: ${p.x.toFixed(1)} / ${p.y.toFixed(1)} / ${p.z.toFixed(1)}`;
+  coordsEl.textContent = `XYZ: ${p.x.toFixed(1)} / ${p.y.toFixed(1)} / ${p.z.toFixed(1)} · build ${BUILD}`;
 }
 
 // ---------- 启动 ----------
@@ -1246,6 +1254,7 @@ if (new URLSearchParams(location.search).has("debug")) {
     finishMine,
     miningSpeedFor,
     toolYields,
+    canMine,
     heldTool,
     toolDurability,
     selectSlot,
