@@ -479,14 +479,14 @@ export class MobManager {
     return this._spawnAt(player, 14, 28, stage.types);
   }
 
-  // /命令用：无视阶段与上限，直接拉一大波怪
+  // /命令用：无视阶段与上限，直接拉一大波怪（距离更远，留出反应时间）
   spawnWave(player, count = 20) {
     const types = this.currentStage.types.length
       ? this.currentStage.types
       : ["zombie", "slime", "elite"];
     let n = 0;
     for (let i = 0; i < count; i++) {
-      if (this._spawnAt(player, 8, 20, types)) n++;
+      if (this._spawnAt(player, 24, 38, types)) n++;
     }
     return n;
   }
