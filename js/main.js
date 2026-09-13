@@ -90,6 +90,7 @@ let commandOpen = false;
 let paused = true;
 let booted = false;
 let animating = false;
+let started = false;
 const inventory = new Inventory();
 // 工具耐久： id -> 剩余耐久
 const toolDurability = new Map();
@@ -462,6 +463,7 @@ async function loadGame() {
   loading.classList.add("hidden");
   paused = false;
   booted = true;
+  started = true;
   last = performance.now();
   toast("已读取存档");
   if (!animating) {
@@ -508,6 +510,7 @@ async function startNewGame() {
   loading.classList.add("hidden");
   paused = false;
   booted = true;
+  started = true;
   last = performance.now();
   if (!animating) {
     animating = true;
@@ -555,6 +558,9 @@ document.addEventListener("pointerlockchange", () => {
     mineProgress = 0;
     updateMineBar();
   }
+  if (locked) started = true;
+  // 开始过游戏后，菜单里的按钮改为「回到游戏」
+  playBtn.textContent = started ? "回到游戏" : "开始游戏";
   // 未锁定鼠标（菜单 / 合成面板 / 命令模式）时暂停世界，锁定后恢复
   paused = !locked;
   // 打开合成面板/命令模式时释放鼠标，此时不要弹出开始菜单
