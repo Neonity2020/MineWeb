@@ -865,18 +865,35 @@ function heldGun() {
   return BLOCKS[id].gun;
 }
 
-// 挖掘速度：匹配方块偏好工具时用工具速度，否则徒手
+// 挖掘速度：匹配方块偏好工具且达到等级时用工具速度，否则徒手
 function miningSpeedFor(blockId) {
   const t = heldTool();
-  if (t && t.type === BLOCKS[blockId].tool) return t.speed;
+  const req = BLOCKS[blockId].requiredTier || 0;
+  if (t && t.type === BLOCKS[blockId].tool && t.tier >= req) return t.speed;
   return 1;
 }
 
-// 工具能否使方块掉落（需要工具的方块必须用对类型）
+// 工具能否使方块掉落（需要工具且等级足够的方块必须用对类型）
 function toolYields(blockId) {
   if (!BLOCKS[blockId].requiresTool) return true;
   const t = heldTool();
-  return !!t && t.type === BLOCKS[blockId].tool;
+  const req = BLOCKS[blockId].requiredTier || 0;
+  return !!t && t.type === BLOCKS[blockId].tool && t.tier >= req;
+}
+
+// 能否挖掘：方块设有等级门槛（如铁矿石需石镐）且工具不达标则凿不动
+function canMine(blockId) {
+  const b = BLOCKS[blockId];
+  const req = b.requiredTier || 0;
+  if (req <= 0) return true;
+  const t = heldTool();
+  return !!t && t.type === b.tool && t.tier >= req;
+}
+
+// 达到等级所需的工具名（用于提示）
+const TIER_TOOL_NAME = { 1: "木镐", 2: "石镐" };
+function neededToolName(blockId) {
+  return TIER_TOOL_NAME[BLOCKS[blockId].requiredTier || 1] || "镐";
 }
 
 // 消耗一次工具耐久，归零则损坏消失
@@ -1031,8 +1048,16 @@ function tryAttack() {
   if (blockHit && blockHit.t < mobHit.distance) return false;
 
   player.addExhaustion(0.3);
-  if (mobHit.mob.hurt(creative ? 1000 : 4)) mobs.kill(mobHit.mob);
+  if (mobHit.mob.hurt(creative ? 1000 : meleeDamage())) mobs.kill(mobHit.mob);
   return true;
+}
+
+// 近战伤害：持剑时按等级递增，否则徒手
+const SWORD_DAMAGE = { 1: 4, 2: 5, 3: 7 };
+function meleeDamage() {
+  const t = heldTool();
+  if (t && t.type === "sword") return SWORD_DAMAGE[t.tier] || 4;
+  return 4;
 }
 
 function showTracer(from, to, headshot = false) {
@@ -1171,8 +1196,11 @@ function animate() {
       if (key !== mineKey) {
         mineKey = key;
         mineProgress = 0;
+        if (id !== BEDROCK && !canMine(id)) {
+          toast(`需要${neededToolName(id)}（或更好）才能开采`);
+        }
       }
-      if (id !== BEDROCK) {
+      if (id !== BEDROCK && canMine(id)) {
         const speed = miningSpeedFor(id);
         const hardness = Math.max(0.05, BLOCKS[id].hardness);
         mineProgress += (dt * speed) / hardness;

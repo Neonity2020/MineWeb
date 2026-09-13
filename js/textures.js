@@ -204,6 +204,35 @@ const PAINTERS = {
     const stripe = x % 5 === 0 ? -30 : 0;
     return [...shade([112, 76, 42], n + stripe), 255];
   },
+  iron_ore(x, y, rnd) {
+    const spots = [
+      [3, 4],
+      [9, 3],
+      [12, 6],
+      [5, 9],
+      [11, 10],
+      [2, 11],
+      [7, 6],
+    ];
+    let on = false;
+    for (const [sx, sy] of spots) {
+      if (Math.abs(x - sx) <= 1 && Math.abs(y - sy) <= 1) {
+        on = true;
+        break;
+      }
+    }
+    const n = rnd() * 28 - 14;
+    return [...shade(on ? [198, 150, 96] : [128, 128, 128], n), 255];
+  },
+  iron_ingot(x, y, rnd) {
+    if (x < 3 || x > 12 || y < 6 || y > 10) return [0, 0, 0, 0];
+    const top = y === 6;
+    const edge = x === 3 || x === 12 || y === 10;
+    const n = rnd() * 22 - 11;
+    let base = top ? [226, 230, 238] : edge ? [150, 156, 166] : [196, 202, 212];
+    if (!top && !edge && y === 7 && x < 8) base = [232, 236, 244];
+    return [...shade(base, n), 255];
+  },
 };
 
 // 工具图标：斜向木柄 + 不同形状的头部
@@ -231,6 +260,7 @@ function toolPainter(head, kind) {
 
 const WOOD_HEAD = [176, 132, 74];
 const STONE_HEAD = [150, 150, 150];
+const IRON_HEAD = [206, 212, 222];
 PAINTERS.wood_pickaxe = toolPainter(WOOD_HEAD, "pickaxe");
 PAINTERS.wood_axe = toolPainter(WOOD_HEAD, "axe");
 PAINTERS.wood_shovel = toolPainter(WOOD_HEAD, "shovel");
@@ -239,6 +269,10 @@ PAINTERS.stone_pickaxe = toolPainter(STONE_HEAD, "pickaxe");
 PAINTERS.stone_axe = toolPainter(STONE_HEAD, "axe");
 PAINTERS.stone_shovel = toolPainter(STONE_HEAD, "shovel");
 PAINTERS.stone_sword = toolPainter(STONE_HEAD, "sword");
+PAINTERS.iron_pickaxe = toolPainter(IRON_HEAD, "pickaxe");
+PAINTERS.iron_axe = toolPainter(IRON_HEAD, "axe");
+PAINTERS.iron_shovel = toolPainter(IRON_HEAD, "shovel");
+PAINTERS.iron_sword = toolPainter(IRON_HEAD, "sword");
 
 export function buildAtlasCanvas() {
   const canvas = document.createElement("canvas");

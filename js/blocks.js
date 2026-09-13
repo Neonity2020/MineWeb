@@ -30,6 +30,12 @@ export const FLINT_STEEL = 26;
 export const CAMPFIRE = 27;
 export const COOKED_PORK = 28;
 export const COOKED_CHICKEN = 29;
+export const IRON_ORE = 30;
+export const IRON_INGOT = 31;
+export const IRON_PICKAXE = 32;
+export const IRON_AXE = 33;
+export const IRON_SHOVEL = 34;
+export const IRON_SWORD = 35;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -66,6 +72,12 @@ export const TILES = [
   "campfire_side",
   "cooked_pork",
   "cooked_chicken",
+  "iron_ore",
+  "iron_ingot",
+  "iron_pickaxe",
+  "iron_axe",
+  "iron_shovel",
+  "iron_sword",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -84,6 +96,7 @@ function def(id, name, textures, opts = {}) {
     hardness: opts.hardness ?? 1,
     tool: opts.tool ?? null,
     requiresTool: opts.requiresTool ?? false,
+    requiredTier: opts.requiredTier ?? 0,
     drop: opts.drop,
     use: opts.use ?? null,
     gun: opts.gun ?? null,
@@ -156,14 +169,14 @@ export const BLOCKS = {
     topSide(TILE.crafting_table_top, TILE.crafting_table_side, TILE.plank),
     { hardness: 2.5, tool: "axe" }
   ),
-  [WOOD_PICKAXE]: toolDef(WOOD_PICKAXE, "木镐", TILE.wood_pickaxe, "pickaxe", 3, 60),
-  [WOOD_AXE]: toolDef(WOOD_AXE, "木斧", TILE.wood_axe, "axe", 3, 60),
-  [WOOD_SHOVEL]: toolDef(WOOD_SHOVEL, "木锹", TILE.wood_shovel, "shovel", 3, 60),
-  [WOOD_SWORD]: toolDef(WOOD_SWORD, "木剑", TILE.wood_sword, "sword", 3, 60),
-  [STONE_PICKAXE]: toolDef(STONE_PICKAXE, "石镐", TILE.stone_pickaxe, "pickaxe", 5, 132),
-  [STONE_AXE]: toolDef(STONE_AXE, "石斧", TILE.stone_axe, "axe", 5, 132),
-  [STONE_SHOVEL]: toolDef(STONE_SHOVEL, "石锹", TILE.stone_shovel, "shovel", 5, 132),
-  [STONE_SWORD]: toolDef(STONE_SWORD, "石剑", TILE.stone_sword, "sword", 5, 132),
+  [WOOD_PICKAXE]: toolDef(WOOD_PICKAXE, "木镐", TILE.wood_pickaxe, "pickaxe", 3, 60, 1),
+  [WOOD_AXE]: toolDef(WOOD_AXE, "木斧", TILE.wood_axe, "axe", 3, 60, 1),
+  [WOOD_SHOVEL]: toolDef(WOOD_SHOVEL, "木锹", TILE.wood_shovel, "shovel", 3, 60, 1),
+  [WOOD_SWORD]: toolDef(WOOD_SWORD, "木剑", TILE.wood_sword, "sword", 3, 60, 1),
+  [STONE_PICKAXE]: toolDef(STONE_PICKAXE, "石镐", TILE.stone_pickaxe, "pickaxe", 5, 132, 2),
+  [STONE_AXE]: toolDef(STONE_AXE, "石斧", TILE.stone_axe, "axe", 5, 132, 2),
+  [STONE_SHOVEL]: toolDef(STONE_SHOVEL, "石锹", TILE.stone_shovel, "shovel", 5, 132, 2),
+  [STONE_SWORD]: toolDef(STONE_SWORD, "石剑", TILE.stone_sword, "sword", 5, 132, 2),
   [PISTOL]: def(PISTOL, "手枪", all(TILE.pistol), {
     solid: false,
     opaque: false,
@@ -213,15 +226,32 @@ export const BLOCKS = {
     topSide(TILE.campfire_top, TILE.campfire_side, TILE.log_top),
     { hardness: 0.5, tool: "axe", drop: null }
   ),
+  [IRON_ORE]: def(IRON_ORE, "铁矿石", all(TILE.iron_ore), {
+    hardness: 3.0,
+    tool: "pickaxe",
+    requiresTool: true,
+    requiredTier: 2,
+    drop: IRON_INGOT,
+  }),
+  [IRON_INGOT]: def(IRON_INGOT, "铁锭", all(TILE.iron_ingot), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+  }),
+  [IRON_PICKAXE]: toolDef(IRON_PICKAXE, "铁镐", TILE.iron_pickaxe, "pickaxe", 6, 250, 3),
+  [IRON_AXE]: toolDef(IRON_AXE, "铁斧", TILE.iron_axe, "axe", 6, 250, 3),
+  [IRON_SHOVEL]: toolDef(IRON_SHOVEL, "铁锹", TILE.iron_shovel, "shovel", 6, 250, 3),
+  [IRON_SWORD]: toolDef(IRON_SWORD, "铁剑", TILE.iron_sword, "sword", 7, 250, 3),
 };
 
-function toolDef(id, name, tile, type, speed, durability) {
+function toolDef(id, name, tile, type, speed, durability, tier = 1) {
   return def(id, name, all(tile), {
     solid: false,
     opaque: false,
     renderPass: "none",
     placeable: false,
-    use: { type, speed, durability },
+    use: { type, speed, durability, tier },
   });
 }
 
@@ -259,6 +289,10 @@ export const HOTBAR = [
   STONE_AXE,
   STONE_SHOVEL,
   STONE_SWORD,
+  IRON_PICKAXE,
+  IRON_AXE,
+  IRON_SHOVEL,
+  IRON_SWORD,
   PISTOL,
   FLINT_STEEL,
   RAW_PORK,
@@ -269,6 +303,7 @@ export const HOTBAR = [
   DIRT,
   STONE,
   COBBLESTONE,
+  IRON_ORE,
   LOG,
   PLANK,
   LEAVES,
@@ -280,6 +315,6 @@ export const HOTBAR = [
 ];
 
 // 所有可合成/持有的物品（用于背包显示）
-export const ALL_ITEMS = [...HOTBAR, STICK];
+export const ALL_ITEMS = [...HOTBAR, STICK, IRON_INGOT];
 
 

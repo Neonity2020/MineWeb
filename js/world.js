@@ -11,6 +11,7 @@ import {
   SAND,
   LOG,
   LEAVES,
+  IRON_ORE,
   BLOCKS,
   TILE_COUNT,
   isOpaque,
@@ -393,8 +394,30 @@ export class World {
       }
     }
 
+    this.plantOre(rng);
     this.plantTrees(rng);
     this.fluidReady = true;
+  }
+
+  // 铁矿石：以矿脉形式分布在石块深处（y 越低越多）
+  plantOre(rng) {
+    const veins = 520;
+    const maxY = 20;
+    for (let i = 0; i < veins; i++) {
+      const cx = 2 + Math.floor(rng() * (WORLD_SIZE - 4));
+      const cz = 2 + Math.floor(rng() * (WORLD_SIZE - 4));
+      const cy = 2 + Math.floor(rng() * (maxY - 2));
+      const size = 4 + Math.floor(rng() * 5);
+      for (let k = 0; k < size; k++) {
+        const x = cx + Math.floor((rng() - 0.5) * 3);
+        const y = cy + Math.floor((rng() - 0.5) * 3);
+        const z = cz + Math.floor((rng() - 0.5) * 3);
+        if (y < 1 || y > maxY) continue;
+        if (!this.inBounds(x, y, z)) continue;
+        if (this.getBlock(x, y, z) !== STONE) continue;
+        this.setBlock(x, y, z, IRON_ORE);
+      }
+    }
   }
 
   plantTrees(rng) {

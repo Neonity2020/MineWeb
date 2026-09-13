@@ -17,6 +17,11 @@ import {
   STONE_AXE,
   STONE_SHOVEL,
   STONE_SWORD,
+  IRON_INGOT,
+  IRON_PICKAXE,
+  IRON_AXE,
+  IRON_SHOVEL,
+  IRON_SWORD,
   PISTOL,
   FLINT_STEEL,
 } from "./blocks.js";
@@ -42,8 +47,14 @@ export const RECIPES = [
   { out: { id: STONE_SHOVEL, n: 1 }, in: [{ id: COBBLESTONE, n: 1 }, { id: STICK, n: 2 }] },
   { out: { id: STONE_SWORD, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },
 
+  // 铁制工具
+  { out: { id: IRON_PICKAXE, n: 1 }, in: [{ id: IRON_INGOT, n: 3 }, { id: STICK, n: 2 }] },
+  { out: { id: IRON_AXE, n: 1 }, in: [{ id: IRON_INGOT, n: 3 }, { id: STICK, n: 2 }] },
+  { out: { id: IRON_SHOVEL, n: 1 }, in: [{ id: IRON_INGOT, n: 1 }, { id: STICK, n: 2 }] },
+  { out: { id: IRON_SWORD, n: 1 }, in: [{ id: IRON_INGOT, n: 2 }, { id: STICK, n: 1 }] },
+
   // 武器
-  { out: { id: PISTOL, n: 1 }, in: [{ id: COBBLESTONE, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
+  { out: { id: PISTOL, n: 1 }, in: [{ id: IRON_INGOT, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
 
   // 生火
   { out: { id: FLINT_STEEL, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },
