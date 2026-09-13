@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js?v=20260913b";
 import { Player } from "./player.js?v=20260913b";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260913b";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260913b";
 import { drawTileTo } from "./textures.js?v=20260913b";
 import { Inventory } from "./inventory.js?v=20260913b";
 import { RECIPES } from "./recipes.js?v=20260913b";
@@ -85,6 +85,17 @@ scene.add(headMarker);
 let headMarkerTimer = 0;
 let headMarkerTarget = null;
 const headMarkerPos = new THREE.Vector3();
+
+// 铁矿嗅探器标记（穿墙可见）
+const oreMarker = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)),
+  new THREE.LineBasicMaterial({ color: 0xffd76a, depthTest: false, transparent: true })
+);
+oreMarker.visible = false;
+oreMarker.frustumCulled = false;
+oreMarker.renderOrder = 3;
+scene.add(oreMarker);
+let oreMarkerTimer = 0;
 
 // 手枪弹道
 const tracerGeo = new THREE.BufferGeometry();
@@ -338,12 +349,44 @@ craftingEl.addEventListener("mousedown", (e) => {
 });
 
 // ---------- 命令模式 ----------
+const COMPASS = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"];
+const ORE_SNIFF_RADIUS = 64;
+const ORE_MARKER_SECONDS = 10;
+
+function compassDir(dx, dz) {
+  const deg = (Math.atan2(dx, -dz) * 180) / Math.PI;
+  return COMPASS[Math.round(((deg + 360) % 360) / 45) % 8];
+}
+
+// 扫描附近铁矿：报最近一块的距离/方位/坐标，并放一个穿墙标记
+function sniffIron() {
+  const px = Math.floor(player.position.x);
+  const py = Math.floor(player.position.y);
+  const pz = Math.floor(player.position.z);
+  const hit = world.findNearestBlock(px, py, pz, IRON_ORE, ORE_SNIFF_RADIUS);
+  if (!hit) {
+    toast(`半径 ${ORE_SNIFF_RADIUS} 格内没有铁矿信号（铁矿只生成在 Y 2~20，往深处挖）`);
+    return;
+  }
+  const dx = hit.x - px;
+  const dy = hit.y - py;
+  const dz = hit.z - pz;
+  const dist = Math.round(Math.hypot(dx, dy, dz));
+  const vert = dy > 1 ? "上方" : dy < -1 ? "下方" : "同层";
+  oreMarker.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
+  oreMarker.visible = true;
+  oreMarkerTimer = ORE_MARKER_SECONDS;
+  oreMarker.material.opacity = 1;
+  toast(`铁矿信号：${dist} 格 · ${compassDir(dx, dz)}方 · ${vert} · 坐标 (${hit.x}, ${hit.y}, ${hit.z})`);
+}
+
 const COMMANDS = {
   "一大波": () => {
     const n = mobs.spawnWave(player, 20);
     if (n > 0) toast(`一大波怪物来袭！（${n} 只）`);
     else toast("附近没有合适的位置生成怪物");
   },
+  "铁矿嗅探器": () => sniffIron(),
 };
 
 function openCommand() {
@@ -1145,6 +1188,12 @@ function animate() {
     headMarker.visible = headMarkerTimer > 0;
   } else if (headMarker.visible) {
     headMarker.visible = false;
+  }
+
+  if (oreMarkerTimer > 0) {
+    oreMarkerTimer = Math.max(0, oreMarkerTimer - dt);
+    oreMarker.visible = oreMarkerTimer > 0;
+    oreMarker.material.opacity = 0.55 + 0.45 * Math.sin(time * 8);
   }
 
   if (paused) {

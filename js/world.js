@@ -191,6 +191,38 @@ export class World {
     return this.data[this.idx(x, y, z)];
   }
 
+  // 在以 (cx, cy, cz) 为球心、radius 为半径的范围内查找最近的 id 方块
+  findNearestBlock(cx, cy, cz, id, radius = 64) {
+    let best = null;
+    let bestD2 = Infinity;
+    const x0 = Math.max(0, cx - radius);
+    const x1 = Math.min(WORLD_SIZE - 1, cx + radius);
+    const y0 = Math.max(0, cy - radius);
+    const y1 = Math.min(HEIGHT - 1, cy + radius);
+    const z0 = Math.max(0, cz - radius);
+    const z1 = Math.min(WORLD_SIZE - 1, cz + radius);
+    const r2 = radius * radius;
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx;
+      const dx2 = dx * dx;
+      for (let z = z0; z <= z1; z++) {
+        const dz = z - cz;
+        const flat = dx2 + dz * dz;
+        if (flat > r2) continue;
+        for (let y = y0; y <= y1; y++) {
+          if (this.data[this.idx(x, y, z)] !== id) continue;
+          const dy = y - cy;
+          const d2 = flat + dy * dy;
+          if (d2 < bestD2) {
+            bestD2 = d2;
+            best = { x, y, z, dist2: d2 };
+          }
+        }
+      }
+    }
+    return best;
+  }
+
   setBlock(x, y, z, id) {
     if (!this.inBounds(x, y, z)) return false;
     const i = this.idx(x, y, z);
