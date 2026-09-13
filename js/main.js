@@ -25,6 +25,7 @@ const recipeListEl = document.getElementById("recipeList");
 const craftCloseBtn = document.getElementById("craftClose");
 const saveBtn = document.getElementById("saveBtn");
 const loadBtn = document.getElementById("loadBtn");
+const newGameBtn = document.getElementById("newGameBtn");
 const saveInfoEl = document.getElementById("saveInfo");
 const toastEl = document.getElementById("toast");
 const heldNameEl = document.getElementById("heldName");
@@ -470,6 +471,52 @@ async function loadGame() {
   lockPointer();
 }
 
+// 开始新游戏：随机新种子重建世界，清空进度
+async function startNewGame() {
+  if (!window.confirm("开始新游戏？当前进度与存档将被清除。")) return;
+
+  paused = true;
+  overlay.classList.add("hidden");
+  loading.classList.remove("hidden");
+
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch (e) {
+    /* ignore */
+  }
+
+  const seed = (Math.random() * 0x7fffffff) | 0;
+  await buildWorld(seed);
+
+  inventory.clear();
+  toolDurability.clear();
+  creative = false;
+  selected = 0;
+  player.spawn(Math.floor(WORLD_SIZE / 2), Math.floor(WORLD_SIZE / 2));
+  player.update(0);
+  mobs.clear();
+  mobs.loadProgress(0);
+  updateMode();
+  updateHotbar();
+  updateSaveInfo();
+  lastHealth = player.health;
+  renderHealth();
+  updateThreatHud();
+
+  setProgress(100, "新世界就绪");
+  await frame();
+  loading.classList.add("hidden");
+  paused = false;
+  booted = true;
+  last = performance.now();
+  if (!animating) {
+    animating = true;
+    animate();
+  }
+  lockPointer();
+  toast("已开始新游戏");
+}
+
 // ---------- 输入 ----------
 canvas.addEventListener("click", () => {
   if (document.pointerLockElement !== canvas) lockPointer();
@@ -492,6 +539,11 @@ saveBtn.addEventListener("click", (e) => {
 loadBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   loadGame();
+});
+
+newGameBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  startNewGame();
 });
 
 document.addEventListener("pointerlockchange", () => {
