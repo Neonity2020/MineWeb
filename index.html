@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MineWeb · 我的世界 Web 版</title>
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%236aa040'/%3E%3Crect y='10' width='16' height='6' fill='%23785a34'/%3E%3C/svg%3E"
+  />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="underwater"></div>
+
+  <div id="crosshair"></div>
+
+  <div id="minebar"><div id="mineFill"></div></div>
+
+  <div id="hud">
+    <div id="coords"></div>
+    <div id="fps"></div>
+    <div id="mode"></div>
+  </div>
+
+  <div id="heldName"></div>
+  <div id="hotbar"></div>
+
+  <div id="crafting" class="hidden">
+    <div class="craft-panel">
+      <div class="craft-head">
+        <span>合成 · 背包</span>
+        <button id="craftClose">关闭 (E)</button>
+      </div>
+      <div class="craft-body">
+        <div class="craft-col">
+          <h3>背包</h3>
+          <div id="invGrid" class="inv-grid"></div>
+        </div>
+        <div class="craft-col">
+          <h3>配方</h3>
+          <div id="recipeList" class="recipe-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="panel">
+      <h1>MineWeb</h1>
+      <p class="sub">一个跑在浏览器里的迷你「我的世界」</p>
+      <button id="playBtn">开始游戏</button>
+      <div class="menu-row">
+        <button id="saveBtn" class="ghost">保存进度</button>
+        <button id="loadBtn" class="ghost">读取进度</button>
+      </div>
+      <div id="saveInfo" class="save-info"></div>
+      <div class="help">
+        <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动</div>
+        <div><kbd>空格</kbd> 跳跃 · <kbd>Shift</kbd> 疾跑</div>
+        <div class="hint">水中：<kbd>空格</kbd> 上浮 · <kbd>Shift</kbd> 下潜</div>
+        <div><kbd>鼠标左键</kbd> 挖掘 · <kbd>鼠标右键</kbd> 放置</div>
+        <div><kbd>1</kbd>–<kbd>0</kbd> / <kbd>滚轮</kbd> 选择方块</div>
+        <div><kbd>E</kbd> 合成/背包 · <kbd>C</kbd> 创造模式</div>
+        <div><kbd>Ctrl</kbd>+<kbd>S</kbd> 保存 · <kbd>Ctrl</kbd>+<kbd>O</kbd> 读取</div>
+        <div><kbd>Esc</kbd> 释放鼠标 / 菜单</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="loading">
+    <div class="loading-box">
+      <div class="loading-title">正在生成世界…</div>
+      <div class="bar"><div id="loadingBar"></div></div>
+      <div id="loadingPct">0%</div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

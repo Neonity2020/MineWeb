@@ -1,0 +1,216 @@
+import * as THREE from "three";
+import { TILES, TILE_COUNT } from "./blocks.js";
+
+const SIZE = 16;
+
+function hash(x, y, s) {
+  let n = (x * 374761393 + y * 668265263 + s * 2246822519) | 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+}
+
+function clamp(v) {
+  return v < 0 ? 0 : v > 255 ? 255 : v | 0;
+}
+
+function shade(base, amt) {
+  return [clamp(base[0] + amt), clamp(base[1] + amt), clamp(base[2] + amt)];
+}
+
+// 每种贴图的逐像素绘制函数: (x, y, rnd) -> [r,g,b,a]
+const PAINTERS = {
+  grass_top(x, y, rnd) {
+    const n = rnd() * 34 - 17;
+    return [...shade([106, 170, 64], n), 255];
+  },
+  grass_side(x, y, rnd) {
+    if (y < 4) {
+      const n = rnd() * 26 - 13;
+      return [...shade([106, 170, 64], n), 255];
+    }
+    if (y === 4 && rnd() > 0.45) {
+      const n = rnd() * 26 - 13;
+      return [...shade([106, 170, 64], n), 255];
+    }
+    const n = rnd() * 30 - 15;
+    return [...shade([120, 88, 52], n), 255];
+  },
+  dirt(x, y, rnd) {
+    const n = rnd() * 34 - 17;
+    return [...shade([120, 88, 52], n), 255];
+  },
+  stone(x, y, rnd) {
+    const n = rnd() * 30 - 15;
+    return [...shade([130, 130, 130], n), 255];
+  },
+  cobblestone(x, y, rnd) {
+    const cell = (Math.floor(x / 5) + Math.floor(y / 5)) % 2;
+    const edge = x % 5 === 0 || y % 5 === 0;
+    const n = rnd() * 22 - 11;
+    const base = edge ? [92, 92, 92] : cell ? [126, 126, 126] : [146, 146, 146];
+    return [...shade(base, n), 255];
+  },
+  sand(x, y, rnd) {
+    const n = rnd() * 24 - 12;
+    return [...shade([227, 217, 163], n), 255];
+  },
+  log_side(x, y, rnd) {
+    const stripe = x % 4 === 0 ? -26 : 0;
+    const n = rnd() * 16 - 8;
+    return [...shade([124, 92, 50], n + stripe), 255];
+  },
+  log_top(x, y, rnd) {
+    const dx = x - 7.5;
+    const dy = y - 7.5;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    const ring = Math.floor(d) % 2 === 0 ? 12 : -12;
+    const n = rnd() * 12 - 6;
+    return [...shade([168, 130, 78], ring + n), 255];
+  },
+  leaves(x, y, rnd) {
+    const r = rnd();
+    if (r < 0.14) return [0, 0, 0, 0];
+    const n = r * 60 - 30;
+    return [...shade([62, 122, 46], n), 255];
+  },
+  plank(x, y, rnd) {
+    const line = y % 5 === 0 ? -34 : ((Math.floor(y / 5) + Math.floor(x / 8)) % 2) * 8 - 4;
+    const n = rnd() * 16 - 8;
+    return [...shade([176, 132, 74], n + line), 255];
+  },
+  glass(x, y, rnd) {
+    const border = x === 0 || y === 0 || x === SIZE - 1 || y === SIZE - 1;
+    const inner = x === 1 || y === 1 || x === SIZE - 2 || y === SIZE - 2;
+    if (border) return [214, 236, 245, 255];
+    if (inner) return [188, 216, 230, 130];
+    if (x + y === 5 || (x === 3 && y < 5) || (y === 3 && x < 5)) return [235, 248, 255, 90];
+    return [0, 0, 0, 0];
+  },
+  water(x, y, rnd) {
+    const wave = Math.sin((x + y) * 0.9) * 12;
+    const n = rnd() * 14 - 7;
+    return [...shade([58, 112, 208], wave + n), 255];
+  },
+  bedrock(x, y, rnd) {
+    const n = rnd() * 70 - 35;
+    return [...shade([72, 72, 76], n), 255];
+  },
+  stick(x, y, rnd) {
+    // 透明背景上的对角木棍
+    const on = x - y >= -1 && x - y <= 3 && x + y >= 5 && x + y <= 24;
+    if (!on) return [0, 0, 0, 0];
+    const n = rnd() * 24 - 12;
+    return [...shade([150, 110, 62], n), 255];
+  },
+  stone_bricks(x, y, rnd) {
+    const row = Math.floor(y / 4);
+    const offset = row % 2 === 0 ? 0 : 4;
+    const mortar = y % 4 === 0 || (x + offset) % 8 === 0;
+    const n = rnd() * 20 - 10;
+    const base = mortar ? [96, 96, 96] : [150, 150, 150];
+    return [...shade(base, n), 255];
+  },
+  crafting_table_top(x, y, rnd) {
+    const grid = x < 1 || y < 1 || x > 14 || y > 14 || (x + 1) % 5 === 0 || (y + 1) % 5 === 0;
+    const n = rnd() * 14 - 7;
+    const base = grid ? [96, 68, 36] : [176, 132, 74];
+    return [...shade(base, n), 255];
+  },
+  crafting_table_side(x, y, rnd) {
+    const n = rnd() * 16 - 8;
+    // 木纹 + 工具暗纹
+    let base = [176, 132, 74];
+    if (y % 5 === 0) base = [140, 104, 58];
+    if (x > 3 && x < 12 && y > 6 && y < 12) base = [120, 88, 48];
+    return [...shade(base, n), 255];
+  },
+};
+
+// 工具图标：斜向木柄 + 不同形状的头部
+function toolPainter(head, kind) {
+  return (x, y, rnd) => {
+    let part = null;
+    if (Math.abs(x + y - 16) <= 1 && x >= 4 && x <= 11) part = "handle";
+    if (kind === "pickaxe") {
+      if (y >= 1 && y <= 3 && x >= 3 && x <= 12) part = "head";
+      if (x >= 10 && x <= 12 && y >= 3 && y <= 6) part = "head";
+    } else if (kind === "axe") {
+      if (x >= 9 && x <= 13 && y >= 2 && y <= 7) part = "head";
+    } else if (kind === "shovel") {
+      if (x >= 9 && x <= 12 && y >= 1 && y <= 5) part = "head";
+    } else if (kind === "sword") {
+      if (Math.abs(x + y - 18) <= 1 && x >= 7) part = "head";
+      if (x >= 3 && x <= 7 && y >= 9 && y <= 11) part = "head";
+    }
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 22 - 11;
+    const base = part === "head" ? head : [150, 110, 62];
+    return [...shade(base, n), 255];
+  };
+}
+
+const WOOD_HEAD = [176, 132, 74];
+const STONE_HEAD = [150, 150, 150];
+PAINTERS.wood_pickaxe = toolPainter(WOOD_HEAD, "pickaxe");
+PAINTERS.wood_axe = toolPainter(WOOD_HEAD, "axe");
+PAINTERS.wood_shovel = toolPainter(WOOD_HEAD, "shovel");
+PAINTERS.wood_sword = toolPainter(WOOD_HEAD, "sword");
+PAINTERS.stone_pickaxe = toolPainter(STONE_HEAD, "pickaxe");
+PAINTERS.stone_axe = toolPainter(STONE_HEAD, "axe");
+PAINTERS.stone_shovel = toolPainter(STONE_HEAD, "shovel");
+PAINTERS.stone_sword = toolPainter(STONE_HEAD, "sword");
+
+export function buildAtlasCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = TILE_COUNT * SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(canvas.width, canvas.height);
+  const data = img.data;
+
+  TILES.forEach((name, tileIndex) => {
+    const paint = PAINTERS[name];
+    const ox = tileIndex * SIZE;
+    for (let y = 0; y < SIZE; y++) {
+      for (let x = 0; x < SIZE; x++) {
+        // 使用位置+贴图索引作为种子，保证每次生成一致
+        let r = hash(x, y, tileIndex + 1);
+        const rnd = () => {
+          r = hash((r * 65536) | 0, y + 1, tileIndex + 7);
+          return r;
+        };
+        const [cr, cg, cb, ca] = paint(x, y, rnd);
+        const i = (y * canvas.width + ox + x) * 4;
+        data[i] = cr;
+        data[i + 1] = cg;
+        data[i + 2] = cb;
+        data[i + 3] = ca;
+      }
+    }
+  });
+
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+export function createAtlasTexture() {
+  const tex = new THREE.CanvasTexture(buildAtlasCanvas());
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// 供 UI 显示单个贴图
+let cachedAtlas = null;
+export function drawTileTo(canvas, tileIndex) {
+  const ctx = canvas.getContext("2d");
+  if (!cachedAtlas) cachedAtlas = buildAtlasCanvas();
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(cachedAtlas, tileIndex * SIZE, 0, SIZE, SIZE, 0, 0, canvas.width, canvas.height);
+}
