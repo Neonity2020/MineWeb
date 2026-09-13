@@ -21,6 +21,8 @@ const TYPES = {
     halfWidth: 0.3,
     height: 1.8,
     hitRadius: 0.7,
+    headY: 1.6,
+    headR: 0.3,
     hop: false,
     jumpSpeed: 7.6,
     skin: "#5c9c48",
@@ -41,6 +43,8 @@ const TYPES = {
     halfWidth: 0.4,
     height: 0.8,
     hitRadius: 0.6,
+    headY: 0.6,
+    headR: 0.3,
     hop: true,
     jumpSpeed: 6.4,
     skin: "#6fbf4a",
@@ -59,6 +63,8 @@ const TYPES = {
     halfWidth: 0.38,
     height: 2.25,
     hitRadius: 0.9,
+    headY: 2.0,
+    headR: 0.36,
     hop: false,
     jumpSpeed: 8.2,
     scale: 1.25,
@@ -199,6 +205,8 @@ export class Mob {
     this.hitRadius = this.def.hitRadius;
     this.height = this.def.height;
     this.halfWidth = this.def.halfWidth;
+    this.headY = this.def.headY || 0;
+    this.headR = this.def.headR || 0;
 
     this.group = new THREE.Group();
     this.group.frustumCulled = false;
@@ -767,6 +775,16 @@ export class MobManager {
         best = mob;
       }
     }
-    return best ? { mob: best, distance: bestT } : null;
+    if (!best) return null;
+
+    // 爆头判定：射线是否穿过头部判定球
+    let headshot = false;
+    if (best.headR > 0) {
+      _center.set(best.position.x, best.position.y + best.headY, best.position.z);
+      _sphere.center.copy(_center);
+      _sphere.radius = best.headR;
+      headshot = _ray.intersectSphere(_sphere, _hit) !== null;
+    }
+    return { mob: best, distance: bestT, headshot };
   }
 }

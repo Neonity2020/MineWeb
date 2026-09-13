@@ -995,11 +995,12 @@ function tryAttack() {
   return true;
 }
 
-function showTracer(from, to) {
+function showTracer(from, to, headshot = false) {
   const attr = tracerGeo.getAttribute("position");
   attr.setXYZ(0, from.x, from.y, from.z);
   attr.setXYZ(1, to.x, to.y, to.z);
   attr.needsUpdate = true;
+  tracerMat.color.set(headshot ? 0xff5a3a : 0xffe08a);
   tracer.visible = true;
   tracerTimer = 0.06;
 }
@@ -1016,15 +1017,18 @@ function fireGun() {
   const mobHit = mobs.raycast(origin, dir, gun.range);
 
   let end = origin.clone().addScaledVector(dir, gun.range);
+  let headshot = false;
   if (mobHit && (!blockHit || mobHit.distance < blockHit.t)) {
     end = origin.clone().addScaledVector(dir, mobHit.distance);
-    if (mobHit.mob.hurt(creative ? 1000 : gun.damage)) mobs.kill(mobHit.mob);
+    headshot = mobHit.headshot;
+    const dmg = headshot ? gun.damage * 2 : gun.damage;
+    if (mobHit.mob.hurt(creative ? 1000 : dmg)) mobs.kill(mobHit.mob);
   } else if (blockHit) {
     end = origin.clone().addScaledVector(dir, blockHit.t);
   }
 
   player.addExhaustion(0.1);
-  showTracer(origin, end);
+  showTracer(origin, end, headshot);
   viewmodel.kick();
   return true;
 }
