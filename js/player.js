@@ -42,6 +42,11 @@ export class Player {
     this.regenTimer = 0;
     this.dead = false;
     this.spawnPoint = new THREE.Vector3(0, 40, 0);
+    this.maxHunger = 20;
+    this.hunger = 20;
+    this.hungerTimer = 0;
+    this.exhaustion = 0;
+    this.starveTimer = 0;
   }
 
   spawn(x, z) {
@@ -54,6 +59,10 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;
     this.regenTimer = 0;
+    this.hunger = this.maxHunger;
+    this.hungerTimer = 0;
+    this.exhaustion = 0;
+    this.starveTimer = 0;
   }
 
   damage(n) {
@@ -61,6 +70,7 @@ export class Player {
     this.health = Math.max(0, this.health - n);
     this.hurtTimer = 0.4;
     this.regenTimer = 0;
+    this.addExhaustion(0.2);
     if (this.health <= 0) this.dead = true;
   }
 
@@ -71,7 +81,23 @@ export class Player {
     this.dead = false;
     this.hurtTimer = 0;
     this.regenTimer = 0;
+    this.hunger = Math.max(this.hunger, this.maxHunger * 0.5);
+    this.starveTimer = 0;
     this.onGround = false;
+  }
+
+  // 消耗度累积：每满 4 点扣 1 点饥饿
+  addExhaustion(amount) {
+    this.exhaustion += amount;
+    while (this.exhaustion >= 4) {
+      this.exhaustion -= 4;
+      if (this.hunger > 0) this.hunger -= 1;
+    }
+  }
+
+  eat(restore) {
+    this.hunger = Math.min(this.maxHunger, this.hunger + restore);
+    this.regenTimer = 0;
   }
 
   handleMouseMove(dx, dy) {
@@ -204,6 +230,7 @@ export class Player {
       if (space && this.onGround) {
         this.velocity.y = JUMP_SPEED;
         this.onGround = false;
+        this.addExhaustion(0.2);
       }
       this.velocity.y -= GRAVITY * dt;
       if (this.velocity.y < -TERMINAL_VELOCITY) this.velocity.y = -TERMINAL_VELOCITY;
@@ -217,15 +244,42 @@ export class Player {
     this.eyeInWater = this.isEyeInWater();
     this.updateCamera();
 
-    // 生命回复：脱离战斗一段时间后缓慢回血
-    if (this.hurtTimer > 0) {
-      this.hurtTimer = Math.max(0, this.hurtTimer - dt);
-      this.regenTimer = 0;
-    } else if (!this.dead && this.health < this.maxHealth) {
-      this.regenTimer += dt;
-      if (this.regenTimer >= 4) {
+    // ---------- 饥饿与生命 ----------
+    this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+    if (sprinting && this.onGround && len > 0) this.addExhaustion(dt * 0.8);
+
+    // 自然消耗：约每 25 秒 1 点
+    this.hungerTimer += dt;
+    if (this.hungerTimer >= 25) {
+      this.hungerTimer = 0;
+      if (this.hunger > 0) this.hunger -= 1;
+    }
+
+    if (!this.dead) {
+      if (this.hunger > 6) {
+        // 有饱食度时缓慢回血
+        if (this.hurtTimer <= 0 && this.health < this.maxHealth) {
+          this.regenTimer += dt;
+          if (this.regenTimer >= 4) {
+            this.regenTimer = 0;
+            this.health += 1;
+            this.addExhaustion(3);
+          }
+        } else {
+          this.regenTimer = 0;
+        }
+        this.starveTimer = 0;
+      } else if (this.hunger <= 0) {
+        // 饥饿归零开始掉血
         this.regenTimer = 0;
-        this.health += 1;
+        this.starveTimer += dt;
+        if (this.starveTimer >= 4) {
+          this.starveTimer = 0;
+          this.damage(1);
+        }
+      } else {
+        this.regenTimer = 0;
+        this.starveTimer = 0;
       }
     }
   }

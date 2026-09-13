@@ -147,6 +147,20 @@ const PAINTERS = {
     else base = [82, 85, 94];
     return [...shade(base, n), 255];
   },
+  raw_pork(x, y, rnd) {
+    if (x < 2 || x > 13 || y < 4 || y > 11) return [0, 0, 0, 0];
+    const edge = x === 2 || x === 13 || y === 4 || y === 11;
+    const n = rnd() * 20 - 10;
+    if (!edge && (x + y) % 5 === 0) return [...shade([242, 202, 198], n), 255];
+    return [...shade(edge ? [168, 92, 100] : [222, 138, 146], n), 255];
+  },
+  raw_chicken(x, y, rnd) {
+    if (x < 3 || x > 12 || y < 3 || y > 12) return [0, 0, 0, 0];
+    const edge = x === 3 || x === 12 || y === 3 || y === 12;
+    const n = rnd() * 20 - 10;
+    if (!edge && x + y === 15) return [...shade([236, 210, 186], n), 255];
+    return [...shade(edge ? [176, 138, 104] : [230, 196, 166], n), 255];
+  },
 };
 
 // 工具图标：斜向木柄 + 不同形状的头部

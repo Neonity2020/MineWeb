@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js";
 import { Player } from "./player.js";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, isTool, isPlaceable, isGun } from "./blocks.js";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, isTool, isPlaceable, isGun, isFood } from "./blocks.js";
 import { drawTileTo } from "./textures.js";
 import { Inventory } from "./inventory.js";
 import { RECIPES } from "./recipes.js";
@@ -32,6 +32,7 @@ const heldNameEl = document.getElementById("heldName");
 const minebarEl = document.getElementById("minebar");
 const mineFillEl = document.getElementById("mineFill");
 const healthEl = document.getElementById("health");
+const hungerEl = document.getElementById("hunger");
 const hurtEl = document.getElementById("hurt");
 const threatEl = document.getElementById("threat");
 const commandEl = document.getElementById("command");
@@ -165,8 +166,8 @@ function updateHotbar() {
   });
   const held = HOTBAR[selected];
   heldNameEl.textContent = BLOCKS[held].name;
-  // 生存模式下未持有的工具/枪械不显示手持模型，只留手臂
-  const countable = isTool(held) || isGun(held);
+  // 生存模式下未持有的工具/枪械/食物不显示手持模型，只留手臂
+  const countable = isTool(held) || isGun(held) || isFood(held);
   const heldOwned = creative || !countable || inventory.count(held) > 0;
   viewmodel.showItem(heldOwned ? held : AIR);
 }
@@ -407,6 +408,7 @@ function saveGame(silent = false) {
       yaw: player.yaw,
       pitch: player.pitch,
       health: player.health,
+      hunger: player.hunger,
     },
     creative,
     selected,
@@ -442,6 +444,7 @@ async function loadGame() {
     player.pitch = save.player.pitch || 0;
     player.spawnPoint.copy(player.position);
     player.health = typeof save.player.health === "number" ? save.player.health : player.maxHealth;
+    player.hunger = typeof save.player.hunger === "number" ? save.player.hunger : player.maxHunger;
     player.dead = false;
     player.hurtTimer = 0;
     player.regenTimer = 0;
@@ -456,6 +459,7 @@ async function loadGame() {
   mobs.loadProgress(save.playTime || 0);
   lastHealth = player.health;
   renderHealth();
+  renderHunger();
   updateThreatHud();
 
   setProgress(100, "读取完成");
@@ -503,6 +507,7 @@ async function startNewGame() {
   updateSaveInfo();
   lastHealth = player.health;
   renderHealth();
+  renderHunger();
   updateThreatHud();
 
   setProgress(100, "新世界就绪");
@@ -677,6 +682,7 @@ document.addEventListener("mousedown", (e) => {
       mineProgress = 0;
     }
   } else if (e.button === 2) {
+    if (tryEat()) return;
     placeBlock();
   }
 });
@@ -716,6 +722,23 @@ function renderHealth() {
   }
 }
 
+function renderHunger() {
+  if (hungerEl.childElementCount !== HEART_COUNT) {
+    hungerEl.innerHTML = "";
+    for (let i = 0; i < HEART_COUNT; i++) {
+      const s = document.createElement("span");
+      s.className = "food";
+      hungerEl.appendChild(s);
+    }
+  }
+  for (let i = 0; i < HEART_COUNT; i++) {
+    const v = player.hunger - i * 2;
+    const el = hungerEl.children[i];
+    el.classList.toggle("full", v >= 2);
+    el.classList.toggle("half", v === 1);
+  }
+}
+
 let hurtFlashTimer = null;
 function flashHurt() {
   hurtEl.classList.add("show");
@@ -742,6 +765,23 @@ function updateThreatHud() {
 // 阶段推进时提示玩家
 mobs.onStageChange = (stage, idx) => {
   if (idx > 0) toast(`怪物变得更强了：${stage.name}`);
+};
+
+// 怪物/猎物死亡：结算掉落
+mobs.onDeath = (mob) => {
+  const drops = mob.def.drops;
+  if (!drops) return;
+  const gained = [];
+  for (const d of drops) {
+    const n = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
+    if (n <= 0) continue;
+    inventory.add(d.id, n);
+    gained.push(`${BLOCKS[d.id].name} ×${n}`);
+  }
+  if (gained.length) {
+    updateHotbar();
+    toast(`获得 ${gained.join("、")}`);
+  }
 };
 
 // ---------- 交互 ----------
@@ -822,6 +862,7 @@ function consumeDurability() {
 function finishMine(x, y, z) {
   const id = breakAt(x, y, z);
   if (id === null) return;
+  player.addExhaustion(0.4);
   if (toolYields(id)) {
     const drop = BLOCKS[id].drop === undefined ? id : BLOCKS[id].drop;
     if (drop !== null) {
@@ -880,6 +921,24 @@ function placeBlock() {
 
 const ATTACK_REACH = 3.5;
 
+// 右键进食
+function tryEat() {
+  const id = HOTBAR[selected];
+  if (!isFood(id)) return false;
+  if (!creative && inventory.count(id) <= 0) return false;
+  if (player.hunger >= player.maxHunger) {
+    toast("现在并不饿");
+    return true;
+  }
+  if (!creative) {
+    inventory.remove(id, 1);
+    updateHotbar();
+  }
+  player.eat(BLOCKS[id].food.hunger);
+  renderHunger();
+  return true;
+}
+
 // 挥击准星内的怪物；命中返回 true（此时不挖掘方块）
 function tryAttack() {
   const origin = player.eyePosition;
@@ -891,8 +950,8 @@ function tryAttack() {
   const blockHit = world.raycast(origin, dir, ATTACK_REACH);
   if (blockHit && blockHit.t < mobHit.distance) return false;
 
-  mobHit.mob.hurt(creative ? 1000 : 4);
-  if (mobHit.mob.dead) mobs.remove(mobHit.mob);
+  player.addExhaustion(0.3);
+  if (mobHit.mob.hurt(creative ? 1000 : 4)) mobs.kill(mobHit.mob);
   return true;
 }
 
@@ -919,12 +978,12 @@ function fireGun() {
   let end = origin.clone().addScaledVector(dir, gun.range);
   if (mobHit && (!blockHit || mobHit.distance < blockHit.t)) {
     end = origin.clone().addScaledVector(dir, mobHit.distance);
-    mobHit.mob.hurt(creative ? 1000 : gun.damage);
-    if (mobHit.mob.dead) mobs.remove(mobHit.mob);
+    if (mobHit.mob.hurt(creative ? 1000 : gun.damage)) mobs.kill(mobHit.mob);
   } else if (blockHit) {
     end = origin.clone().addScaledVector(dir, blockHit.t);
   }
 
+  player.addExhaustion(0.1);
   showTracer(origin, end);
   viewmodel.kick();
   return true;
@@ -974,6 +1033,7 @@ function animate() {
   if (player.health < lastHealth) flashHurt();
   lastHealth = player.health;
   renderHealth();
+  renderHunger();
   updateThreatHud();
   if (player.dead) {
     player.respawn();
@@ -1127,6 +1187,7 @@ async function boot() {
   mobs.loadProgress(0);
   lastHealth = player.health;
   renderHealth();
+  renderHunger();
   updateThreatHud();
 
   loading.classList.add("hidden");

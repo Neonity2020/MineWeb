@@ -24,6 +24,8 @@ export const STONE_AXE = 20;
 export const STONE_SHOVEL = 21;
 export const STONE_SWORD = 22;
 export const PISTOL = 23;
+export const RAW_PORK = 24;
+export const RAW_CHICKEN = 25;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -53,6 +55,8 @@ export const TILES = [
   "stone_shovel",
   "stone_sword",
   "pistol",
+  "raw_pork",
+  "raw_chicken",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -74,6 +78,7 @@ function def(id, name, textures, opts = {}) {
     drop: opts.drop,
     use: opts.use ?? null,
     gun: opts.gun ?? null,
+    food: opts.food ?? null,
     textures,
   };
 }
@@ -156,6 +161,20 @@ export const BLOCKS = {
     placeable: false,
     gun: { damage: 7, cooldown: 0.35, range: 40 },
   }),
+  [RAW_PORK]: def(RAW_PORK, "生猪排", all(TILE.raw_pork), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    food: { hunger: 6 },
+  }),
+  [RAW_CHICKEN]: def(RAW_CHICKEN, "生鸡肉", all(TILE.raw_chicken), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    food: { hunger: 4 },
+  }),
 };
 
 function toolDef(id, name, tile, type, speed, durability) {
@@ -188,6 +207,10 @@ export function isGun(id) {
   return id !== AIR && !!BLOCKS[id].gun;
 }
 
+export function isFood(id) {
+  return id !== AIR && !!BLOCKS[id].food;
+}
+
 // 物品栏：工具在前，方块在后
 export const HOTBAR = [
   WOOD_PICKAXE,
@@ -199,6 +222,8 @@ export const HOTBAR = [
   STONE_SHOVEL,
   STONE_SWORD,
   PISTOL,
+  RAW_PORK,
+  RAW_CHICKEN,
   GRASS,
   DIRT,
   STONE,
