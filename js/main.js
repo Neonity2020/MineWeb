@@ -1,12 +1,14 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js";
-import { Player } from "./player.js";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js";
-import { drawTileTo } from "./textures.js";
-import { Inventory } from "./inventory.js";
-import { RECIPES } from "./recipes.js";
-import { ViewModel } from "./viewmodel.js";
-import { MobManager } from "./mobs.js";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js?v=20260913";
+import { Player } from "./player.js?v=20260913";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260913";
+import { drawTileTo } from "./textures.js?v=20260913";
+import { Inventory } from "./inventory.js?v=20260913";
+import { RECIPES } from "./recipes.js?v=20260913";
+import { ViewModel } from "./viewmodel.js?v=20260913";
+import { MobManager } from "./mobs.js?v=20260913";
+
+console.log("MineWeb build 20260913");
 
 const canvas = document.getElementById("game");
 const overlay = document.getElementById("overlay");
