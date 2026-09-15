@@ -36,6 +36,8 @@ export const IRON_PICKAXE = 32;
 export const IRON_AXE = 33;
 export const IRON_SHOVEL = 34;
 export const IRON_SWORD = 35;
+export const SHOTGUN = 36;
+export const BOSS_TROPHY = 37;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -78,6 +80,8 @@ export const TILES = [
   "iron_axe",
   "iron_shovel",
   "iron_sword",
+  "shotgun",
+  "boss_trophy",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -184,6 +188,14 @@ export const BLOCKS = {
     placeable: false,
     gun: { damage: 7, cooldown: 0.35, range: 40 },
   }),
+  [SHOTGUN]: def(SHOTGUN, "散弹枪", all(TILE.shotgun), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    // 一次射出多颗弹丸，近距离威力大、散射明显
+    gun: { damage: 4, cooldown: 0.9, range: 22, pellets: 8, spread: 0.11, sound: "shotgun", kick: 0.3 },
+  }),
   [RAW_PORK]: def(RAW_PORK, "生猪排", all(TILE.raw_pork), {
     solid: false,
     opaque: false,
@@ -243,6 +255,12 @@ export const BLOCKS = {
   [IRON_AXE]: toolDef(IRON_AXE, "铁斧", TILE.iron_axe, "axe", 6, 250, 3),
   [IRON_SHOVEL]: toolDef(IRON_SHOVEL, "铁锹", TILE.iron_shovel, "shovel", 6, 250, 3),
   [IRON_SWORD]: toolDef(IRON_SWORD, "铁剑", TILE.iron_sword, "sword", 7, 250, 3),
+  [BOSS_TROPHY]: def(BOSS_TROPHY, "凋灵之心", all(TILE.boss_trophy), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+  }),
 };
 
 function toolDef(id, name, tile, type, speed, durability, tier = 1) {
@@ -294,6 +312,7 @@ export const HOTBAR = [
   IRON_SHOVEL,
   IRON_SWORD,
   PISTOL,
+  SHOTGUN,
   FLINT_STEEL,
   RAW_PORK,
   RAW_CHICKEN,
@@ -315,6 +334,6 @@ export const HOTBAR = [
 ];
 
 // 所有可合成/持有的物品（用于背包显示）
-export const ALL_ITEMS = [...HOTBAR, STICK, IRON_INGOT];
+export const ALL_ITEMS = [...HOTBAR, STICK, IRON_INGOT, BOSS_TROPHY];
 
 

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260913b";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260915c";
 
 const SIZE = 16;
 
@@ -145,6 +145,48 @@ const PAINTERS = {
     if (part === "grip") base = [96, 68, 42];
     else if (part === "groove") base = [44, 46, 52];
     else base = [82, 85, 94];
+    return [...shade(base, n), 255];
+  },
+  shotgun(x, y, rnd) {
+    let part = null;
+    // 上下两根并排枪管
+    if (y >= 2 && y <= 3 && x >= 0 && x <= 12) part = "metal";
+    if (y >= 5 && y <= 6 && x >= 0 && x <= 12) part = "metal";
+    // 枪口
+    if (y >= 2 && y <= 6 && x === 0) part = "groove";
+    // 机匣
+    if (x >= 10 && x <= 13 && y >= 2 && y <= 8) part = "metal";
+    // 泵动护木（枪管下方）
+    if (x >= 3 && x <= 8 && y >= 7 && y <= 8) part = "wood";
+    // 护木纹路
+    if (x >= 4 && x <= 7 && y === 8 && x % 2 === 0) part = "groove";
+    // 扳机护圈
+    if (x >= 9 && x <= 10 && y >= 9 && y <= 10) part = "metal";
+    // 握把
+    if (x >= 10 && x <= 12 && y >= 9 && y <= 12) part = "wood";
+    // 枪托
+    if (x >= 13 && x <= 15 && y >= 6 && y <= 10) part = "wood";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 16 - 8;
+    let base;
+    if (part === "wood") base = [104, 70, 40];
+    else if (part === "groove") base = [40, 42, 48];
+    else base = [78, 82, 92];
+    return [...shade(base, n), 255];
+  },
+  boss_trophy(x, y, rnd) {
+    // 凋灵之心：紫红水晶质感的菱形宝石
+    const dx = Math.abs(x - 7.5);
+    const dy = Math.abs(y - 7.5);
+    const diamond = dx * 0.85 + dy;
+    if (diamond > 7.2) return [0, 0, 0, 0];
+    const n = rnd() * 22 - 11;
+    let base;
+    if (diamond < 1.6) base = [255, 196, 236];
+    else if (diamond < 4.2) base = [206, 62, 150];
+    else base = [118, 26, 104];
+    // 高光
+    if (x + y === 9 && diamond < 5) base = [255, 236, 250];
     return [...shade(base, n), 255];
   },
   raw_pork(x, y, rnd) {

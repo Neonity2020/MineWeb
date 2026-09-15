@@ -165,6 +165,57 @@ body {
   color: #ffb27a;
 }
 
+/* ---------- BOSS 血条 ---------- */
+#bossbar {
+  position: fixed;
+  left: 50%;
+  top: 64px;
+  z-index: 9;
+  transform: translateX(-50%);
+  width: min(78vw, 520px);
+  text-align: center;
+  pointer-events: none;
+}
+#bossbar.hidden {
+  display: none;
+}
+#bossName {
+  margin-bottom: 4px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #ffd2d2;
+  text-shadow: 0 1px 3px #000, 0 0 6px rgba(255, 40, 40, 0.5);
+}
+.boss-track {
+  height: 14px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+#bossFill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff5a3a, #b8143c);
+  transition: width 0.15s linear;
+}
+#bossbar.enraged #bossFill {
+  background: linear-gradient(90deg, #ff2a2a, #ff007a);
+  animation: boss-pulse 0.5s infinite alternate;
+}
+#bossbar.enraged #bossName {
+  color: #ff9a9a;
+}
+@keyframes boss-pulse {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.6);
+  }
+}
+
 /* ---------- 物品栏 ---------- */
 #hotbar {
   position: fixed;

@@ -23,8 +23,9 @@ import {
   IRON_SHOVEL,
   IRON_SWORD,
   PISTOL,
+  SHOTGUN,
   FLINT_STEEL,
-} from "./blocks.js?v=20260913b";
+} from "./blocks.js?v=20260915c";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
 // basic: true 表示无需工作台即可在背包直接合成（仅用于开局搭建工作台的基础配方）
@@ -56,6 +57,7 @@ export const RECIPES = [
 
   // 武器
   { out: { id: PISTOL, n: 1 }, in: [{ id: IRON_INGOT, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
+  { out: { id: SHOTGUN, n: 1 }, in: [{ id: IRON_INGOT, n: 5 }, { id: STICK, n: 2 }, { id: GLASS, n: 1 }] },
 
   // 生火
   { out: { id: FLINT_STEEL, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },

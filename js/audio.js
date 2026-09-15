@@ -198,6 +198,12 @@ const SOUNDS = {
     noise({ dur: 0.14, gain: 0.45, type: "lowpass", freq: 3200, freqEnd: 200, q: 0.7 });
     tone({ type: "square", f0: 200, f1: 50, dur: 0.12, gain: 0.22 });
   },
+  // 霰弹枪声：更低沉、更响、拖尾更长
+  shotgun() {
+    noise({ dur: 0.24, gain: 0.55, type: "lowpass", freq: 2400, freqEnd: 120, q: 0.6 });
+    tone({ type: "square", f0: 150, f1: 40, dur: 0.22, gain: 0.28 });
+    tone({ type: "sawtooth", f0: 90, f1: 30, dur: 0.3, gain: 0.14, delay: 0.02 });
+  },
   // 爆头提示音
   headshot() {
     tone({ type: "sine", f0: 1200, f1: 1900, dur: 0.14, gain: 0.2 });
@@ -221,6 +227,20 @@ const SOUNDS = {
   ominous() {
     tone({ type: "sawtooth", f0: 110, f1: 82, dur: 1.2, gain: 0.16 });
     tone({ type: "sine", f0: 55, f1: 41, dur: 1.4, gain: 0.14, delay: 0.05 });
+  },
+  // BOSS 半血狂暴：咆哮
+  boss_enrage() {
+    tone({ type: "sawtooth", f0: 180, f1: 60, dur: 0.9, gain: 0.3 });
+    noise({ dur: 0.5, gain: 0.28, type: "lowpass", freq: 900, freqEnd: 160, q: 0.6 });
+    tone({ type: "square", f0: 90, f1: 45, dur: 0.7, gain: 0.16, delay: 0.05 });
+  },
+  // BOSS 被击败：胜利号角
+  boss_defeat() {
+    tone({ type: "triangle", f0: 392, dur: 0.18, gain: 0.24 });
+    tone({ type: "triangle", f0: 523, dur: 0.18, gain: 0.24, delay: 0.16 });
+    tone({ type: "triangle", f0: 659, dur: 0.22, gain: 0.24, delay: 0.32 });
+    tone({ type: "triangle", f0: 784, dur: 0.5, gain: 0.26, delay: 0.5 });
+    tone({ type: "sine", f0: 55, f1: 40, dur: 1.0, gain: 0.12 });
   },
 };
 

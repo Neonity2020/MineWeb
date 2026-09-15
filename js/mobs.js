@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { AIR, WATER, RAW_PORK, RAW_CHICKEN, isSolid } from "./blocks.js?v=20260913b";
-import { WORLD_SIZE, HEIGHT } from "./world.js?v=20260913b";
+import { AIR, WATER, RAW_PORK, RAW_CHICKEN, IRON_INGOT, BOSS_TROPHY, isSolid } from "./blocks.js?v=20260915c";
+import { WORLD_SIZE, HEIGHT } from "./world.js?v=20260915c";
 
 const GRAVITY = 26;
 const MAX_FALL = 60;
@@ -72,6 +72,34 @@ const TYPES = {
     eye: "#ff5a2a",
     shirt: "#27405f",
     pants: "#1c2236",
+  },
+  boss: {
+    name: "凋灵魔王",
+    hostile: true,
+    model: "humanoid",
+    boss: true,
+    health: 260,
+    speed: 2.0,
+    damage: 7,
+    attackRange: 2.6,
+    attackCooldown: 1.1,
+    detectRange: 48,
+    halfWidth: 0.75,
+    height: 4.3,
+    hitRadius: 1.7,
+    headY: 3.85,
+    headR: 0.6,
+    hop: false,
+    jumpSpeed: 9.5,
+    scale: 2.4,
+    skin: "#5a3470",
+    eye: "#ff2f1e",
+    shirt: "#2a1636",
+    pants: "#180e22",
+    drops: [
+      { id: BOSS_TROPHY, min: 1, max: 1 },
+      { id: IRON_INGOT, min: 8, max: 14 },
+    ],
   },
   pig: {
     name: "猪",
@@ -207,6 +235,11 @@ export class Mob {
     this.halfWidth = this.def.halfWidth;
     this.headY = this.def.headY || 0;
     this.headR = this.def.headR || 0;
+    this.isBoss = !!this.def.boss;
+    this.enraged = false;
+    this.speedMul = 1;
+    this.damageMul = 1;
+    this.summonTimer = 0;
 
     this.group = new THREE.Group();
     this.group.frustumCulled = false;
@@ -451,6 +484,7 @@ export class Mob {
   update(dt, player) {
     if (this.dead) return;
     const def = this.def;
+    const speed = def.speed * this.speedMul;
     this.hurtTimer = Math.max(0, this.hurtTimer - dt);
     this.attackTimer = Math.max(0, this.attackTimer - dt);
     this.hopTimer = Math.max(0, this.hopTimer - dt);
@@ -469,8 +503,8 @@ export class Mob {
         if (def.hop) {
           if (this.onGround && this.hopTimer <= 0) {
             this.velocity.y = def.jumpSpeed;
-            this.velocity.x = nx * def.speed;
-            this.velocity.z = nz * def.speed;
+            this.velocity.x = nx * speed;
+            this.velocity.z = nz * speed;
             this.hopTimer = 0.9;
             this.onGround = false;
           } else if (this.onGround) {
@@ -480,8 +514,8 @@ export class Mob {
           }
           moving = Math.hypot(this.velocity.x, this.velocity.z) > 0.1;
         } else {
-          this.velocity.x = nx * def.speed;
-          this.velocity.z = nz * def.speed;
+          this.velocity.x = nx * speed;
+          this.velocity.z = nz * speed;
           moving = true;
         }
       } else {
@@ -511,7 +545,7 @@ export class Mob {
           const nx = Math.sin(this.wanderDir);
           const nz = Math.cos(this.wanderDir);
           this.yaw = Math.atan2(nx, nz);
-          const sp = def.speed * 0.45;
+          const sp = speed * 0.45;
           this.velocity.x = nx * sp;
           this.velocity.z = nz * sp;
           moving = true;
@@ -544,7 +578,7 @@ export class Mob {
     this.moveAxis("y", this.velocity.y * dt);
     if (!def.hop && this.onGround && (hitX || hitZ)) this.velocity.y = def.jumpSpeed;
 
-    this.walkPhase += (moving ? def.speed : 0) * dt * 5;
+    this.walkPhase += (moving ? speed : 0) * dt * 5;
     this.animate(dt, moving);
     this.syncTransform();
 
@@ -555,7 +589,7 @@ export class Mob {
         player.position.y + 1.8 > this.position.y;
       if (distXZ < def.attackRange && vertOverlap) {
         this.attackTimer = def.attackCooldown;
-        player.damage(def.damage);
+        player.damage(def.damage * this.damageMul);
         const kl = distXZ || 1;
         player.velocity.x += (dp.x / kl) * 3.5;
         player.velocity.z += (dp.z / kl) * 3.5;
@@ -623,6 +657,19 @@ export class MobManager {
     this.onStageChange = null;
     this.onDeath = null;
     this.enabled = true;
+    // BOSS 战
+    this.arena = null;
+    this.boss = null;
+    this.bossDefeated = false;
+    this.onBossSpawn = null;
+    this.onBossEnrage = null;
+    this.onBossDefeated = null;
+    this.onBossReset = null;
+  }
+
+  // 由主循环注入 BOSS 领域坐标（来自 world.js 的 BOSS_ARENA）
+  setArena(arena) {
+    this.arena = arena;
   }
 
   get currentStage() {
@@ -635,7 +682,7 @@ export class MobManager {
 
   countHostile() {
     let n = 0;
-    for (const m of this.mobs) if (m.hostile) n++;
+    for (const m of this.mobs) if (m.hostile && !m.isBoss) n++;
     return n;
   }
 
@@ -653,6 +700,7 @@ export class MobManager {
   }
 
   clear() {
+    this.boss = null;
     while (this.mobs.length > 0) this.remove(this.mobs[0]);
   }
 
@@ -671,12 +719,12 @@ export class MobManager {
   }
 
   // 尝试在玩家周围 [minDist, maxDist] 的环形地带生成指定类型之一
-  _spawnAt(player, minDist, maxDist, types) {
+  _spawnAt(around, minDist, maxDist, types) {
     for (let attempt = 0; attempt < 20; attempt++) {
       const ang = Math.random() * Math.PI * 2;
       const dist = minDist + Math.random() * (maxDist - minDist);
-      const x = Math.floor(player.position.x + Math.cos(ang) * dist);
-      const z = Math.floor(player.position.z + Math.sin(ang) * dist);
+      const x = Math.floor(around.position.x + Math.cos(ang) * dist);
+      const z = Math.floor(around.position.z + Math.sin(ang) * dist);
       if (x < 4 || z < 4 || x >= WORLD_SIZE - 4 || z >= WORLD_SIZE - 4) continue;
       const y = this.world.surfaceHeight(x, z);
       if (y < 2 || y >= HEIGHT - 3) continue;
@@ -701,6 +749,62 @@ export class MobManager {
 
   spawnPrey(player) {
     return this._spawnAt(player, 16, 34, PREY_TYPES);
+  }
+
+  // BOSS：在祭坛中央生成（由玩家进入领域触发）
+  spawnBoss(x, y, z) {
+    const mob = new Mob(this.world, "boss", new THREE.Vector3(x, y, z));
+    mob.summonTimer = 9;
+    this.boss = mob;
+    this.mobs.push(mob);
+    this.scene.add(mob.group);
+    return mob;
+  }
+
+  // BOSS 战状态机：进入领域唤醒、离场脱战、半血狂暴、周期召唤爪牙
+  updateBoss(dt, player) {
+    const a = this.arena;
+    if (!a || this.bossDefeated) return;
+
+    const dx = player.position.x - a.x;
+    const dz = player.position.z - a.z;
+    const dist2 = dx * dx + dz * dz;
+    const boss = this.boss;
+
+    if (!boss) {
+      const tr = a.triggerRadius;
+      if (!player.dead && dist2 <= tr * tr) {
+        const spawned = this.spawnBoss(a.x + 0.5, a.floorY + 1, a.z + 0.5);
+        if (this.onBossSpawn) this.onBossSpawn(spawned);
+      }
+      return;
+    }
+
+    // 脱战：玩家远离领域则 BOSS 回巢（重置为满血）
+    const leave = a.triggerRadius + 20;
+    if (dist2 > leave * leave) {
+      this.remove(boss);
+      this.boss = null;
+      if (this.onBossReset) this.onBossReset();
+      return;
+    }
+
+    // 半血狂暴：提速增伤
+    if (!boss.enraged && boss.health <= boss.def.health * 0.5) {
+      boss.enraged = true;
+      boss.speedMul = 1.35;
+      boss.damageMul = 1.5;
+      if (this.onBossEnrage) this.onBossEnrage(boss);
+    }
+
+    // 周期召唤爪牙
+    boss.summonTimer -= dt;
+    if (boss.summonTimer <= 0) {
+      boss.summonTimer = boss.enraged ? 8 : 12;
+      const types = this.stageIndex >= 3 ? ["zombie", "elite", "slime"] : ["zombie", "slime"];
+      const n = boss.enraged ? 4 : 3;
+      for (let i = 0; i < n; i++) this._spawnAt({ position: boss.position }, 4, 11, types);
+    }
   }
 
   // /命令用：无视阶段与上限，直接拉一大波怪（距离更远，留出反应时间）
@@ -741,13 +845,23 @@ export class MobManager {
       }
     }
 
+    // BOSS 领域：唤醒 / 脱战 / 狂暴 / 召唤
+    this.updateBoss(dt, player);
+
     for (let i = this.mobs.length - 1; i >= 0; i--) {
       const mob = this.mobs[i];
       mob.update(dt, player);
       if (mob.dead) {
+        const isBoss = mob === this.boss;
+        if (isBoss) {
+          this.boss = null;
+          this.bossDefeated = true;
+        }
         this.kill(mob);
+        if (isBoss && this.onBossDefeated) this.onBossDefeated(mob);
         continue;
       }
+      if (mob === this.boss) continue; // BOSS 固守祭坛，不随距离消失
       const dx = mob.position.x - player.position.x;
       const dz = mob.position.z - player.position.z;
       if (dx * dx + dz * dz > 72 * 72) this.remove(mob);

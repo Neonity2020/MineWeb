@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z } from "./world.js?v=20260913b";
-import { Player } from "./player.js?v=20260913b";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260913b";
-import { drawTileTo } from "./textures.js?v=20260913b";
-import { Inventory } from "./inventory.js?v=20260913b";
-import { RECIPES } from "./recipes.js?v=20260913b";
-import { ViewModel } from "./viewmodel.js?v=20260913b";
-import { MobManager } from "./mobs.js?v=20260913b";
-import { sfx } from "./audio.js?v=20260913b";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260915c";
+import { Player } from "./player.js?v=20260915c";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260915c";
+import { drawTileTo } from "./textures.js?v=20260915c";
+import { Inventory } from "./inventory.js?v=20260915c";
+import { RECIPES } from "./recipes.js?v=20260915c";
+import { ViewModel } from "./viewmodel.js?v=20260915c";
+import { MobManager } from "./mobs.js?v=20260915c";
+import { sfx } from "./audio.js?v=20260915c";
 
-const BUILD = "20260913b";
+const BUILD = "20260915c";
 console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
@@ -42,6 +42,9 @@ const headshotEl = document.getElementById("headshot");
 const threatEl = document.getElementById("threat");
 const commandEl = document.getElementById("command");
 const commandInput = document.getElementById("commandInput");
+const bossbarEl = document.getElementById("bossbar");
+const bossNameEl = document.getElementById("bossName");
+const bossFillEl = document.getElementById("bossFill");
 
 const SAVE_KEY = "mineweb.save.v1";
 
@@ -98,18 +101,20 @@ oreMarker.renderOrder = 3;
 scene.add(oreMarker);
 let oreMarkerTimer = 0;
 
-// 手枪弹道
-const tracerGeo = new THREE.BufferGeometry();
-tracerGeo.setAttribute(
-  "position",
-  new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3)
-);
-const tracerMat = new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9 });
-const tracer = new THREE.Line(tracerGeo, tracerMat);
-tracer.frustumCulled = false;
-tracer.visible = false;
-scene.add(tracer);
-let tracerTimer = 0;
+// 枪械弹道：池化多条，霰弹枪一次可射出多颗弹丸
+const TRACER_POOL = 12;
+const TRACER_LIFE = 0.06;
+const tracers = [];
+for (let i = 0; i < TRACER_POOL; i++) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+  const mat = new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9 });
+  const line = new THREE.Line(geo, mat);
+  line.frustumCulled = false;
+  line.visible = false;
+  scene.add(line);
+  tracers.push({ line, mat, timer: 0 });
+}
 let gunCooldown = 0;
 
 // ---------- 物品栏 / 背包 ----------
@@ -409,6 +414,7 @@ craftingEl.addEventListener("mousedown", (e) => {
 const COMPASS = ["北", "东北", "东", "东南", "南", "西南", "西", "西北"];
 const ORE_SNIFF_RADIUS = 64;
 const ORE_MARKER_SECONDS = 10;
+const ORE_SNIFF_COST = 20; // 每次嗅探消耗的圆石数量
 
 function compassDir(dx, dz) {
   const deg = (Math.atan2(dx, -dz) * 180) / Math.PI;
@@ -416,7 +422,17 @@ function compassDir(dx, dz) {
 }
 
 // 扫描附近铁矿：报最近一块的距离/方位/坐标，并放一个穿墙标记
+// 每次使用消耗 ORE_SNIFF_COST 个圆石（创造模式不消耗）
 function sniffIron() {
+  if (!creative) {
+    if (inventory.count(COBBLESTONE) < ORE_SNIFF_COST) {
+      sfx.play("click");
+      toast(`铁矿嗅探器需要 ${ORE_SNIFF_COST} 个圆石（当前 ${inventory.count(COBBLESTONE)}）`);
+      return;
+    }
+    inventory.remove(COBBLESTONE, ORE_SNIFF_COST);
+    updateHotbar();
+  }
   const px = Math.floor(player.position.x);
   const py = Math.floor(player.position.y);
   const pz = Math.floor(player.position.z);
@@ -446,6 +462,22 @@ const COMMANDS = {
     else toast("附近没有合适的位置生成怪物");
   },
   "铁矿嗅探器": () => sniffIron(),
+  "BOSS方向": () => {
+    const dx = BOSS_ARENA.x - player.position.x;
+    const dz = BOSS_ARENA.z - player.position.z;
+    const dist = Math.round(Math.hypot(dx, dz));
+    toast(`BOSS 领域在 ${compassDir(dx, dz)}方约 ${dist} 格（地图北侧边缘的祭坛）`);
+  },
+  "重置BOSS": () => {
+    if (mobs.boss) {
+      mobs.remove(mobs.boss);
+      mobs.boss = null;
+    }
+    mobs.bossDefeated = false;
+    updateBossHud();
+    sfx.play("click");
+    toast("BOSS 已重置，前往祭坛可再次挑战");
+  },
   "静音": () => {
     const m = sfx.toggleMute();
     toast(m ? "音效已关闭" : "音效已开启");
@@ -545,6 +577,7 @@ function saveGame(silent = false) {
     creative,
     selected,
     playTime: mobs.playTime,
+    bossDefeated: mobs.bossDefeated,
     inventory: inventory.entries(),
     edits: world.serializeEdits(),
   };
@@ -589,10 +622,12 @@ async function loadGame() {
   player.update(0);
   mobs.clear();
   mobs.loadProgress(save.playTime || 0);
+  mobs.bossDefeated = !!save.bossDefeated;
   lastHealth = player.health;
   renderHealth();
   renderHunger();
   updateThreatHud();
+  updateBossHud();
 
   setProgress(100, "读取完成");
   await frame();
@@ -634,6 +669,7 @@ async function startNewGame() {
   player.update(0);
   mobs.clear();
   mobs.loadProgress(0);
+  mobs.bossDefeated = false;
   updateMode();
   updateHotbar();
   updateSaveInfo();
@@ -641,6 +677,7 @@ async function startNewGame() {
   renderHealth();
   renderHunger();
   updateThreatHud();
+  updateBossHud();
 
   setProgress(100, "新世界就绪");
   await frame();
@@ -930,6 +967,39 @@ function updateThreatHud() {
   threatEl.textContent = `威胁：${stage.name} · 下一阶段 ${formatClock(next.at - mobs.playTime)}`;
 }
 
+// BOSS 血条
+function updateBossHud() {
+  const boss = mobs.boss;
+  if (!boss || boss.dead) {
+    bossbarEl.classList.add("hidden");
+    return;
+  }
+  bossbarEl.classList.remove("hidden");
+  bossbarEl.classList.toggle("enraged", !!boss.enraged);
+  bossNameEl.textContent = boss.enraged ? `${boss.name} · 狂暴` : boss.name;
+  const pct = Math.max(0, Math.min(1, boss.health / boss.def.health));
+  bossFillEl.style.width = `${pct * 100}%`;
+}
+
+// BOSS 战事件
+mobs.setArena(BOSS_ARENA);
+mobs.onBossSpawn = () => {
+  sfx.play("ominous");
+  toast(`你踏入了 BOSS 领域，${mobs.boss.name} 苏醒了！`);
+};
+mobs.onBossEnrage = (boss) => {
+  sfx.play("boss_enrage");
+  toast(`${boss.name} 狂暴了！`);
+};
+mobs.onBossReset = () => {
+  toast("你逃离了领域，BOSS 回到祭坛并恢复了力量");
+  updateBossHud();
+};
+mobs.onBossDefeated = (boss) => {
+  sfx.play("boss_defeat");
+  toast(`击败了 ${boss.name}！`);
+};
+
 // 阶段推进时提示玩家
 mobs.onStageChange = (stage, idx) => {
   if (idx > 0) {
@@ -1213,14 +1283,30 @@ function meleeDamage() {
   return 4;
 }
 
-function showTracer(from, to, headshot = false) {
-  const attr = tracerGeo.getAttribute("position");
+function showTracer(index, from, to, headshot = false) {
+  const tr = tracers[index % TRACER_POOL];
+  const attr = tr.line.geometry.getAttribute("position");
   attr.setXYZ(0, from.x, from.y, from.z);
   attr.setXYZ(1, to.x, to.y, to.z);
   attr.needsUpdate = true;
-  tracerMat.color.set(headshot ? 0xff5a3a : 0xffe08a);
-  tracer.visible = true;
-  tracerTimer = 0.06;
+  tr.mat.color.set(headshot ? 0xff5a3a : 0xffe08a);
+  tr.line.visible = true;
+  tr.timer = TRACER_LIFE;
+}
+
+// 在视线方向附近取一个带随机散射的方向（用于霰弹枪多弹丸）
+function spreadDirection(baseDir, spread) {
+  if (!spread) return baseDir.clone();
+  return baseDir
+    .clone()
+    .add(
+      new THREE.Vector3(
+        (Math.random() * 2 - 1) * spread,
+        (Math.random() * 2 - 1) * spread,
+        (Math.random() * 2 - 1) * spread
+      )
+    )
+    .normalize();
 }
 
 function fireGun() {
@@ -1230,27 +1316,37 @@ function fireGun() {
   gunCooldown = gun.cooldown;
 
   const origin = player.eyePosition;
-  const dir = player.getLookDirection();
-  const blockHit = world.raycast(origin, dir, gun.range);
-  const mobHit = mobs.raycast(origin, dir, gun.range);
+  const baseDir = player.getLookDirection();
+  const pellets = gun.pellets || 1;
+  const spread = gun.spread || 0;
+  let headshotMob = null;
 
-  let end = origin.clone().addScaledVector(dir, gun.range);
-  let headshot = false;
-  if (mobHit && (!blockHit || mobHit.distance < blockHit.t)) {
-    end = origin.clone().addScaledVector(dir, mobHit.distance);
-    headshot = mobHit.headshot;
-    if (headshot) showHeadshot(mobHit.mob);
-    const dmg = headshot ? gun.damage * 2 : gun.damage;
-    if (mobHit.mob.hurt(creative ? 1000 : dmg)) mobs.kill(mobHit.mob);
-  } else if (blockHit) {
-    end = origin.clone().addScaledVector(dir, blockHit.t);
+  for (let i = 0; i < pellets; i++) {
+    const dir = spreadDirection(baseDir, spread);
+    const blockHit = world.raycast(origin, dir, gun.range);
+    const mobHit = mobs.raycast(origin, dir, gun.range);
+
+    let end = origin.clone().addScaledVector(dir, gun.range);
+    let headshot = false;
+    if (mobHit && (!blockHit || mobHit.distance < blockHit.t)) {
+      end = origin.clone().addScaledVector(dir, mobHit.distance);
+      headshot = mobHit.headshot;
+      if (headshot) headshotMob = mobHit.mob;
+      const dmg = headshot ? gun.damage * 2 : gun.damage;
+      if (mobHit.mob.hurt(creative ? 1000 : dmg)) mobs.kill(mobHit.mob);
+    } else if (blockHit) {
+      end = origin.clone().addScaledVector(dir, blockHit.t);
+    }
+    showTracer(i, origin, end, headshot);
   }
 
   player.addExhaustion(0.1);
-  showTracer(origin, end, headshot);
-  sfx.play("gun");
-  if (headshot) sfx.play("headshot");
-  viewmodel.kick();
+  sfx.play(gun.sound || "gun");
+  if (headshotMob) {
+    showHeadshot(headshotMob);
+    sfx.play("headshot");
+  }
+  viewmodel.kick(gun.kick ?? 0.16);
   return true;
 }
 
@@ -1280,9 +1376,11 @@ function animate() {
 
   // 枪械冷却与弹道淡出
   if (gunCooldown > 0) gunCooldown = Math.max(0, gunCooldown - dt);
-  if (tracerTimer > 0) {
-    tracerTimer -= dt;
-    if (tracerTimer <= 0) tracer.visible = false;
+  for (const tr of tracers) {
+    if (tr.timer > 0) {
+      tr.timer -= dt;
+      if (tr.timer <= 0) tr.line.visible = false;
+    }
   }
   if (headMarkerTimer > 0) {
     headMarkerTimer -= dt;
@@ -1326,6 +1424,7 @@ function animate() {
   renderHealth();
   renderHunger();
   updateThreatHud();
+  updateBossHud();
   if (player.dead) {
     sfx.play("death");
     player.respawn();
@@ -1445,6 +1544,8 @@ if (new URLSearchParams(location.search).has("debug")) {
     saveGame,
     loadGame,
     readSave,
+    mobs,
+    BOSS_ARENA,
     setCreative: (v) => {
       creative = v;
       updateMode();
@@ -1494,10 +1595,12 @@ async function boot() {
   player.update(0);
   mobs.clear();
   mobs.loadProgress(0);
+  mobs.bossDefeated = false;
   lastHealth = player.health;
   renderHealth();
   renderHunger();
   updateThreatHud();
+  updateBossHud();
 
   loading.classList.add("hidden");
   booted = true;

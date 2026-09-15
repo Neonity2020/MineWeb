@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { Noise, makeRng } from "./noise.js?v=20260913b";
-import { createAtlasTexture } from "./textures.js?v=20260913b";
+import { Noise, makeRng } from "./noise.js?v=20260915c";
+import { createAtlasTexture } from "./textures.js?v=20260915c";
 import {
   AIR,
   WATER,
@@ -12,10 +12,13 @@ import {
   LOG,
   LEAVES,
   IRON_ORE,
+  COBBLESTONE,
+  STONE_BRICKS,
+  CAMPFIRE,
   BLOCKS,
   TILE_COUNT,
   isOpaque,
-} from "./blocks.js?v=20260913b";
+} from "./blocks.js?v=20260915c";
 
 export const WORLD_SIZE = 256;
 export const HEIGHT = 64;
@@ -23,6 +26,15 @@ export const CHUNK_SIZE = 32;
 export const CHUNKS_X = WORLD_SIZE / CHUNK_SIZE;
 export const CHUNKS_Z = WORLD_SIZE / CHUNK_SIZE;
 const SEA_LEVEL = 24;
+
+// BOSS 领域：位于地图北侧边缘的高台祭坛
+export const BOSS_ARENA = {
+  x: Math.floor(WORLD_SIZE / 2),
+  z: 16,
+  radius: 13,
+  floorY: 30,
+  triggerRadius: 15, // 玩家进入该半径即唤醒 BOSS
+};
 
 // faces 顺序与 BLOCKS.textures 对应: +X, -X, +Y, -Y, +Z, -Z
 const FACES = [
@@ -428,7 +440,58 @@ export class World {
 
     this.plantOre(rng);
     this.plantTrees(rng);
+    this.buildBossArena();
     this.fluidReady = true;
+  }
+
+  // 地图边缘的 BOSS 祭坛：隆起的高台 + 环路矮墙（四向留门）+ 四角火盆
+  buildBossArena() {
+    const { x: cx, z: cz, radius, floorY } = BOSS_ARENA;
+    const r2 = radius * radius;
+
+    // 用石头把圆形区域垫高到 floorY，再铺地板、清空上方
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        const d2 = dx * dx + dz * dz;
+        if (d2 > r2) continue;
+        const x = cx + dx;
+        const z = cz + dz;
+        if (!this.inBounds(x, 0, z)) continue;
+        const r = Math.sqrt(d2);
+        for (let y = 0; y < floorY; y++) this.setBlock(x, y, z, y === 0 ? BEDROCK : STONE);
+        // 地板：外圈与中心用石砖，中间用圆石，形成同心图案
+        const floor = r > radius - 2 || r < 4 ? STONE_BRICKS : COBBLESTONE;
+        this.setBlock(x, floorY, z, floor);
+        for (let y = floorY + 1; y < HEIGHT; y++) this.setBlock(x, y, z, AIR);
+      }
+    }
+
+    // 环路矮墙，正东南西北四个方向留出入口
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        const r = Math.hypot(dx, dz);
+        if (r < radius - 1.5 || r > radius) continue;
+        if (Math.abs(dx) <= 1 || Math.abs(dz) <= 1) continue; // 入口
+        const x = cx + dx;
+        const z = cz + dz;
+        if (!this.inBounds(x, floorY + 1, z)) continue;
+        for (let y = floorY + 1; y <= floorY + 3; y++) this.setBlock(x, y, z, STONE_BRICKS);
+      }
+    }
+
+    // 四角石柱 + 火盆
+    const p = radius - 4;
+    for (const [dx, dz] of [
+      [-p, -p],
+      [p, -p],
+      [-p, p],
+      [p, p],
+    ]) {
+      const x = cx + dx;
+      const z = cz + dz;
+      for (let y = floorY + 1; y <= floorY + 4; y++) this.setBlock(x, y, z, STONE_BRICKS);
+      this.setBlock(x, floorY + 5, z, CAMPFIRE);
+    }
   }
 
   // 铁矿石：以矿脉形式分布在石块深处（y 越低越多）
