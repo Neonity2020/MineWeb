@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260916u";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260916v";
 
 const SIZE = 16;
 
@@ -200,6 +200,55 @@ const PAINTERS = {
     else if (part === "mag") base = [52, 55, 62];
     else if (part === "groove") base = [38, 40, 46];
     else base = [80, 84, 94];
+    return [...shade(base, n), 255];
+  },
+  wither_ingot(x, y, rnd) {
+    if (!(x >= 3 && x <= 12 && y >= 5 && y <= 10)) return [0, 0, 0, 0];
+    const n = rnd() * 18 - 9;
+    const edge = x === 3 || x === 12 || y === 5 || y === 10;
+    const base = edge ? [42, 30, 60] : y <= 6 ? [104, 74, 132] : [66, 48, 92];
+    return [...shade(base, n), 255];
+  },
+  wither_helmet(x, y, rnd) {
+    let part = null;
+    if (y >= 3 && y <= 7 && x >= 3 && x <= 12) part = "plate";
+    if (y >= 8 && y <= 11 && (x === 3 || x === 4 || x === 11 || x === 12)) part = "plate";
+    if (y === 7 && x >= 6 && x <= 9) part = "accent";
+    if (part === "plate" && y >= 6 && y <= 10 && x >= 5 && x <= 10) part = null;
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 18 - 9;
+    const base = part === "accent" ? [156, 104, 208] : [74, 56, 102];
+    return [...shade(base, n), 255];
+  },
+  wither_chest(x, y, rnd) {
+    let part = null;
+    if (x >= 3 && x <= 12 && y >= 3 && y <= 11) part = "plate";
+    if (y === 3 && x >= 6 && x <= 9) part = null;
+    if (x >= 5 && x <= 10 && y >= 5 && y <= 7) part = "accent";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 18 - 9;
+    const base = part === "accent" ? [156, 104, 208] : [74, 56, 102];
+    return [...shade(base, n), 255];
+  },
+  wither_legs(x, y, rnd) {
+    let part = null;
+    if (x >= 3 && x <= 12 && y >= 3 && y <= 6) part = "plate";
+    if (y >= 6 && y <= 12 && ((x >= 3 && x <= 6) || (x >= 9 && x <= 12))) part = "plate";
+    if (y === 5 && x >= 5 && x <= 10) part = "accent";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 18 - 9;
+    const base = part === "accent" ? [156, 104, 208] : [74, 56, 102];
+    return [...shade(base, n), 255];
+  },
+  wither_boots(x, y, rnd) {
+    let part = null;
+    if (y >= 6 && y <= 11 && x >= 3 && x <= 6) part = "plate";
+    if (y >= 6 && y <= 11 && x >= 9 && x <= 12) part = "plate";
+    if (y >= 10 && y <= 11 && x >= 7 && x <= 8) part = "plate";
+    if (y === 6 && (x === 4 || x === 10)) part = "accent";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 18 - 9;
+    const base = part === "accent" ? [156, 104, 208] : [74, 56, 102];
     return [...shade(base, n), 255];
   },
   boss_trophy(x, y, rnd) {

@@ -26,7 +26,13 @@ import {
   SHOTGUN,
   SMG,
   FLINT_STEEL,
-} from "./blocks.js?v=20260916u";
+  BOSS_TROPHY,
+  WITHER_INGOT,
+  WITHER_HELMET,
+  WITHER_CHEST,
+  WITHER_LEGS,
+  WITHER_BOOTS,
+} from "./blocks.js?v=20260916v";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
 // basic: true 表示无需工作台即可在背包直接合成（仅用于开局搭建工作台的基础配方）
@@ -60,6 +66,13 @@ export const RECIPES = [
   { out: { id: PISTOL, n: 1 }, in: [{ id: IRON_INGOT, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
   { out: { id: SHOTGUN, n: 1 }, in: [{ id: IRON_INGOT, n: 5 }, { id: STICK, n: 2 }, { id: GLASS, n: 1 }] },
   { out: { id: SMG, n: 1 }, in: [{ id: IRON_INGOT, n: 4 }, { id: STICK, n: 2 }] },
+
+  // 凋零套装：凋灵之心熔炼成合金锭，再锻造成护甲
+  { out: { id: WITHER_INGOT, n: 16 }, in: [{ id: BOSS_TROPHY, n: 1 }, { id: IRON_INGOT, n: 6 }] },
+  { out: { id: WITHER_HELMET, n: 1 }, in: [{ id: WITHER_INGOT, n: 3 }] },
+  { out: { id: WITHER_CHEST, n: 1 }, in: [{ id: WITHER_INGOT, n: 5 }] },
+  { out: { id: WITHER_LEGS, n: 1 }, in: [{ id: WITHER_INGOT, n: 4 }] },
+  { out: { id: WITHER_BOOTS, n: 1 }, in: [{ id: WITHER_INGOT, n: 2 }] },
 
   // 生火
   { out: { id: FLINT_STEEL, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },

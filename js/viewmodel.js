@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { BLOCKS, TILE_COUNT, TILE } from "./blocks.js?v=20260916u";
-import { buildAtlasCanvas } from "./textures.js?v=20260916u";
+import { BLOCKS, TILE_COUNT, TILE } from "./blocks.js?v=20260916v";
+import { buildAtlasCanvas } from "./textures.js?v=20260916v";
 
 function texFromTile(atlas, tile, size = 64) {
   const c = document.createElement("canvas");

@@ -39,6 +39,11 @@ export const IRON_SWORD = 35;
 export const SHOTGUN = 36;
 export const BOSS_TROPHY = 37;
 export const SMG = 38;
+export const WITHER_INGOT = 39;
+export const WITHER_HELMET = 40;
+export const WITHER_CHEST = 41;
+export const WITHER_LEGS = 42;
+export const WITHER_BOOTS = 43;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -84,6 +89,11 @@ export const TILES = [
   "shotgun",
   "boss_trophy",
   "smg",
+  "wither_ingot",
+  "wither_helmet",
+  "wither_chest",
+  "wither_legs",
+  "wither_boots",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -108,6 +118,7 @@ function def(id, name, textures, opts = {}) {
     gun: opts.gun ?? null,
     food: opts.food ?? null,
     cookTo: opts.cookTo ?? null,
+    armor: opts.armor ?? null,
     textures,
   };
 }
@@ -279,6 +290,16 @@ export const BLOCKS = {
       auto: true,
     },
   }),
+  [WITHER_INGOT]: def(WITHER_INGOT, "凋灵合金锭", all(TILE.wither_ingot), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+  }),
+  [WITHER_HELMET]: armorDef(WITHER_HELMET, "凋灵头盔", TILE.wither_helmet, "helmet", 3),
+  [WITHER_CHEST]: armorDef(WITHER_CHEST, "凋灵胸甲", TILE.wither_chest, "chest", 8),
+  [WITHER_LEGS]: armorDef(WITHER_LEGS, "凋灵护腿", TILE.wither_legs, "legs", 6),
+  [WITHER_BOOTS]: armorDef(WITHER_BOOTS, "凋灵战靴", TILE.wither_boots, "boots", 3),
 };
 
 function toolDef(id, name, tile, type, speed, durability, tier = 1) {
@@ -290,6 +311,20 @@ function toolDef(id, name, tile, type, speed, durability, tier = 1) {
     use: { type, speed, durability, tier },
   });
 }
+
+// 护甲：slot 决定部位，points 为护甲值（每点减伤 4%，上限 80%）
+function armorDef(id, name, tile, slot, points) {
+  return def(id, name, all(tile), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    armor: { slot, points },
+  });
+}
+
+// 凋零套装（穿齐有额外减伤）
+export const ARMOR_PIECES = [WITHER_HELMET, WITHER_CHEST, WITHER_LEGS, WITHER_BOOTS];
 
 export function isOpaque(id) {
   return id !== AIR && BLOCKS[id].opaque;
@@ -313,6 +348,10 @@ export function isGun(id) {
 
 export function isFood(id) {
   return id !== AIR && !!BLOCKS[id].food;
+}
+
+export function isArmor(id) {
+  return id !== AIR && !!BLOCKS[id].armor;
 }
 
 // 物品栏：工具在前，方块在后
@@ -353,6 +392,16 @@ export const HOTBAR = [
 ];
 
 // 所有可合成/持有的物品（用于背包显示）
-export const ALL_ITEMS = [...HOTBAR, STICK, IRON_INGOT, BOSS_TROPHY];
+export const ALL_ITEMS = [
+  ...HOTBAR,
+  STICK,
+  IRON_INGOT,
+  BOSS_TROPHY,
+  WITHER_INGOT,
+  WITHER_HELMET,
+  WITHER_CHEST,
+  WITHER_LEGS,
+  WITHER_BOOTS,
+];
 
 

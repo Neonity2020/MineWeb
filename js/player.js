@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { isSolid, WATER } from "./blocks.js?v=20260916u";
+import { isSolid, WATER } from "./blocks.js?v=20260916v";
 
 const HALF_WIDTH = 0.3;
 const HEIGHT = 1.8;
@@ -47,6 +47,8 @@ export class Player {
     this.hungerTimer = 0;
     this.exhaustion = 0;
     this.starveTimer = 0;
+    this.armorPoints = 0;
+    this.armorFull = false;
   }
 
   spawn(x, z) {
@@ -67,6 +69,12 @@ export class Player {
 
   damage(n) {
     if (this.dead || n <= 0) return;
+    // 护甲减伤：每点护甲 4%，上限 80%（穿齐凋零套装提升到 85%）
+    if (this.armorPoints > 0) {
+      const cap = this.armorFull ? 0.85 : 0.8;
+      const reduce = Math.min(cap, this.armorPoints * 0.04);
+      n = n * (1 - reduce);
+    }
     this.health = Math.max(0, this.health - n);
     this.hurtTimer = 0.4;
     this.regenTimer = 0;

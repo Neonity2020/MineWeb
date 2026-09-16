@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916u";
-import { Player } from "./player.js?v=20260916u";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260916u";
-import { drawTileTo } from "./textures.js?v=20260916u";
-import { Inventory } from "./inventory.js?v=20260916u";
-import { RECIPES } from "./recipes.js?v=20260916u";
-import { ViewModel } from "./viewmodel.js?v=20260916u";
-import { MobManager } from "./mobs.js?v=20260916u";
-import { sfx } from "./audio.js?v=20260916u";
-import { IntroCinematic } from "./intro.js?v=20260916u";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916v";
+import { Player } from "./player.js?v=20260916v";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isFood, isArmor, isSolid } from "./blocks.js?v=20260916v";
+import { drawTileTo } from "./textures.js?v=20260916v";
+import { Inventory } from "./inventory.js?v=20260916v";
+import { RECIPES } from "./recipes.js?v=20260916v";
+import { ViewModel } from "./viewmodel.js?v=20260916v";
+import { MobManager } from "./mobs.js?v=20260916v";
+import { sfx } from "./audio.js?v=20260916v";
+import { IntroCinematic } from "./intro.js?v=20260916v";
 
-const BUILD = "20260916u";
+const BUILD = "20260916v";
 console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
@@ -39,6 +39,7 @@ const minebarEl = document.getElementById("minebar");
 const mineFillEl = document.getElementById("mineFill");
 const healthEl = document.getElementById("health");
 const hungerEl = document.getElementById("hunger");
+const armorEl = document.getElementById("armor");
 const hurtEl = document.getElementById("hurt");
 const headshotEl = document.getElementById("headshot");
 const threatEl = document.getElementById("threat");
@@ -186,7 +187,8 @@ function layoutHud() {
   const barsBottom = 18 + hotbarEl.offsetHeight + 8;
   healthEl.style.bottom = `${barsBottom}px`;
   hungerEl.style.bottom = `${barsBottom}px`;
-  heldNameEl.style.bottom = `${barsBottom + 26}px`;
+  armorEl.style.bottom = `${barsBottom + 22}px`;
+  heldNameEl.style.bottom = `${barsBottom + 48}px`;
 }
 
 function updateHotbar() {
@@ -972,6 +974,48 @@ function renderHunger() {
   }
 }
 
+// ---------- 凋零套装 / 护甲 ----------
+const ARMOR_ICONS = 10;
+let lastArmorPoints = -1;
+let lastArmorFull = false;
+
+// 持有护甲即视为穿戴：按部位累计护甲值
+function updateArmor() {
+  let points = 0;
+  let pieces = 0;
+  for (const id of ARMOR_PIECES) {
+    if (inventory.count(id) > 0) {
+      points += BLOCKS[id].armor.points;
+      pieces++;
+    }
+  }
+  player.armorPoints = points;
+  const full = pieces === ARMOR_PIECES.length;
+  if (full && !player.armorFull) toast("凋零套装已集齐：减伤上限提升到 85%");
+  player.armorFull = full;
+}
+
+function renderArmor(force = false) {
+  if (!force && player.armorPoints === lastArmorPoints && player.armorFull === lastArmorFull) return;
+  lastArmorPoints = player.armorPoints;
+  lastArmorFull = player.armorFull;
+  if (armorEl.childElementCount !== ARMOR_ICONS) {
+    armorEl.innerHTML = "";
+    for (let i = 0; i < ARMOR_ICONS; i++) {
+      const s = document.createElement("span");
+      s.className = "armor-icon";
+      armorEl.appendChild(s);
+    }
+  }
+  armorEl.classList.toggle("full-set", player.armorFull);
+  for (let i = 0; i < ARMOR_ICONS; i++) {
+    const v = player.armorPoints - i * 2;
+    const el = armorEl.children[i];
+    el.classList.toggle("full", v >= 2);
+    el.classList.toggle("half", v === 1);
+  }
+}
+
 let hurtFlashTimer = null;
 function flashHurt() {
   hurtEl.classList.add("show");
@@ -1481,6 +1525,8 @@ function animate() {
   lastHealth = player.health;
   renderHealth();
   renderHunger();
+  updateArmor();
+  renderArmor();
   updateThreatHud();
   updateBossHud();
   if (player.dead) {

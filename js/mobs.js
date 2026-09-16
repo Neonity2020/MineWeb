@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { AIR, WATER, RAW_PORK, RAW_CHICKEN, IRON_INGOT, BOSS_TROPHY, isSolid } from "./blocks.js?v=20260916u";
-import { WORLD_SIZE, HEIGHT } from "./world.js?v=20260916u";
+import { AIR, WATER, RAW_PORK, RAW_CHICKEN, IRON_INGOT, BOSS_TROPHY, isSolid } from "./blocks.js?v=20260916v";
+import { WORLD_SIZE, HEIGHT } from "./world.js?v=20260916v";
 
 const GRAVITY = 26;
 const MAX_FALL = 60;
