@@ -1,14 +1,14 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260915c";
-import { Player } from "./player.js?v=20260915c";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260915c";
-import { drawTileTo } from "./textures.js?v=20260915c";
-import { Inventory } from "./inventory.js?v=20260915c";
-import { RECIPES } from "./recipes.js?v=20260915c";
-import { ViewModel } from "./viewmodel.js?v=20260915c";
-import { MobManager } from "./mobs.js?v=20260915c";
-import { sfx } from "./audio.js?v=20260915c";
-import { IntroCinematic } from "./intro.js?v=20260915c";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916t";
+import { Player } from "./player.js?v=20260916t";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260916t";
+import { drawTileTo } from "./textures.js?v=20260916t";
+import { Inventory } from "./inventory.js?v=20260916t";
+import { RECIPES } from "./recipes.js?v=20260916t";
+import { ViewModel } from "./viewmodel.js?v=20260916t";
+import { MobManager } from "./mobs.js?v=20260916t";
+import { sfx } from "./audio.js?v=20260916t";
+import { IntroCinematic } from "./intro.js?v=20260916t";
 
 const BUILD = "20260915c";
 console.log(`MineWeb build ${BUILD}`);
@@ -64,10 +64,15 @@ scene.fog = new THREE.Fog(SKY, 55, 130);
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 500);
 scene.add(camera);
 
+// 手部/手持物模型：独立视图相机 + 场景，叠加渲染，避免被地形深度裁掉
+const viewScene = new THREE.Scene();
+const viewCamera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.01, 10);
+
 // ---------- 世界 / 玩家 ----------
 const world = new World(20240612);
 const player = new Player(world, camera);
-const viewmodel = new ViewModel(camera);
+const viewmodel = new ViewModel();
+viewScene.add(viewmodel.group);
 const mobs = new MobManager(world, scene);
 
 // 方块高亮框
@@ -1118,19 +1123,23 @@ function toolYields(blockId) {
   return !!t && t.type === BLOCKS[blockId].tool && t.tier >= req;
 }
 
-// 能否挖掘：方块设有等级门槛（如铁矿石需石镐）且工具不达标则凿不动
+// 能否挖掘：方块需要工具时，必须手持对应类型且等级足够的工具
 function canMine(blockId) {
   const b = BLOCKS[blockId];
   const req = b.requiredTier || 0;
-  if (req <= 0) return true;
+  if (!b.requiresTool && req <= 0) return true;
   const t = heldTool();
-  return !!t && t.type === b.tool && t.tier >= req;
+  if (!t || t.type !== b.tool) return false;
+  return t.tier >= req;
 }
 
 // 达到等级所需的工具名（用于提示）
-const TIER_TOOL_NAME = { 1: "木镐", 2: "石镐" };
+const TIER_PREFIX = { 0: "", 1: "木", 2: "石", 3: "铁" };
+const TOOL_NAME = { pickaxe: "镐", axe: "斧", shovel: "锹", sword: "剑" };
 function neededToolName(blockId) {
-  return TIER_TOOL_NAME[BLOCKS[blockId].requiredTier || 1] || "镐";
+  const b = BLOCKS[blockId];
+  const prefix = TIER_PREFIX[b.requiredTier || 0] ?? "";
+  return prefix + (TOOL_NAME[b.tool] || "镐");
 }
 
 // 消耗一次工具耐久，归零则损坏消失
@@ -1388,8 +1397,11 @@ function fireGun() {
 
 // ---------- 自适应 ----------
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = aspect;
   camera.updateProjectionMatrix();
+  viewCamera.aspect = aspect;
+  viewCamera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   layoutHud();
 });
@@ -1455,7 +1467,7 @@ function animate() {
     mobs.update(dt, player);
     updateFootsteps(dt);
   }
-  viewmodel.update(time);
+  viewmodel.update(time, miningHeld && !creative);
 
   // 受伤 / 死亡反馈
   if (player.health < lastHealth) {
@@ -1538,6 +1550,11 @@ function animate() {
   updateMineBar();
 
   renderer.render(scene, camera);
+  // 单独渲染手部模型：清除深度缓冲后叠加，保证永远显示在最前
+  renderer.autoClear = false;
+  renderer.clearDepth();
+  renderer.render(viewScene, viewCamera);
+  renderer.autoClear = true;
 
   fpsAccum += dt;
   fpsFrames++;

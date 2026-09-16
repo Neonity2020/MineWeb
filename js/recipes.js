@@ -25,7 +25,7 @@ import {
   PISTOL,
   SHOTGUN,
   FLINT_STEEL,
-} from "./blocks.js?v=20260915c";
+} from "./blocks.js?v=20260916t";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
 // basic: true 表示无需工作台即可在背包直接合成（仅用于开局搭建工作台的基础配方）

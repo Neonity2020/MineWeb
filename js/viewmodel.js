@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { BLOCKS, TILE_COUNT, TILE } from "./blocks.js?v=20260915c";
-import { buildAtlasCanvas } from "./textures.js?v=20260915c";
+import { BLOCKS, TILE_COUNT, TILE } from "./blocks.js?v=20260916t";
+import { buildAtlasCanvas } from "./textures.js?v=20260916t";
 
 function texFromTile(atlas, tile, size = 64) {
   const c = document.createElement("canvas");
@@ -33,29 +33,27 @@ function tileBoxGeometry(size, tile) {
 }
 
 export class ViewModel {
-  constructor(camera) {
-    this.camera = camera;
+  constructor() {
     this.atlas = buildAtlasCanvas();
     this.group = new THREE.Group();
     this.group.frustumCulled = false;
-    camera.add(this.group);
 
-    // 手臂：上臂
-    const armGeo = new THREE.BoxGeometry(0.14, 0.14, 0.45);
+    // 手臂：上臂（从屏幕右下角伸入）
+    const armGeo = new THREE.BoxGeometry(0.12, 0.12, 0.34);
     const armMat = new THREE.MeshBasicMaterial({ color: 0xb58a63 });
     this.arm = new THREE.Mesh(armGeo, armMat);
-    this.arm.position.set(0.30, -0.33, -0.45);
-    this.arm.rotation.y = 0.25;
-    this.arm.rotation.x = 0.05;
+    this.arm.position.set(0.44, -0.30, -0.44);
+    this.arm.rotation.y = 0.35;
+    this.arm.rotation.x = 0.2;
     this.arm.frustumCulled = false;
     this.group.add(this.arm);
 
     // 手：拳头
-    const handGeo = new THREE.BoxGeometry(0.14, 0.14, 0.18);
+    const handGeo = new THREE.BoxGeometry(0.12, 0.12, 0.15);
     const handMat = new THREE.MeshBasicMaterial({ color: 0xc08a5a });
     this.hand = new THREE.Mesh(handGeo, handMat);
-    this.hand.position.set(0.35, -0.37, -0.72);
-    this.hand.rotation.y = 0.25;
+    this.hand.position.set(0.44, -0.19, -0.70);
+    this.hand.rotation.y = 0.3;
     this.hand.frustumCulled = false;
     this.group.add(this.hand);
 
@@ -65,6 +63,8 @@ export class ViewModel {
     this.shownId = null;
     this.lastSwitch = 0;
     this.recoil = 0;
+    this.swing = 0;
+    this.itemIsTool = false;
     this._lastTime = 0;
   }
 
@@ -92,10 +92,12 @@ export class ViewModel {
     if (!block || id === 0) return;
 
     const tile = block.textures[0];
+    const isTool = block.renderPass === "none";
+    this.itemIsTool = isTool;
     let geo, mat;
-    if (block.renderPass === "none") {
-      // 工具：平面图标（tile 带透明）
-      geo = new THREE.PlaneGeometry(0.55, 0.55);
+    if (isTool) {
+      // 工具 / 物品：平面图标（tile 带透明）
+      geo = new THREE.PlaneGeometry(0.46, 0.46);
       mat = new THREE.MeshBasicMaterial({
         map: texFromTile(this.atlas, tile),
         transparent: true,
@@ -104,12 +106,15 @@ export class ViewModel {
         depthWrite: false,
       });
       this.item = new THREE.Mesh(geo, mat);
-      this.item.position.set(0.34, -0.38, -0.9);
+      this.itemBaseY = -0.13;
+      this.itemBaseZ = -0.82;
+      this.itemBaseRX = -0.15;
+      this.item.position.set(0.40, this.itemBaseY, this.itemBaseZ);
       this.item.rotation.y = -0.5;
-      this.item.rotation.x = -0.15;
+      this.item.rotation.x = this.itemBaseRX;
     } else {
       // 方块：盒体
-      geo = tileBoxGeometry(0.36, tile);
+      geo = tileBoxGeometry(0.30, tile);
       mat = new THREE.MeshBasicMaterial({
         map: texFromTile(this.atlas, tile),
         transparent: true,
@@ -117,9 +122,12 @@ export class ViewModel {
         side: THREE.DoubleSide,
       });
       this.item = new THREE.Mesh(geo, mat);
-      this.item.position.set(0.34, -0.36, -0.93);
+      this.itemBaseY = -0.18;
+      this.itemBaseZ = -0.86;
+      this.itemBaseRX = -0.25;
+      this.item.position.set(0.40, this.itemBaseY, this.itemBaseZ);
       this.item.rotation.y = 0.35;
-      this.item.rotation.x = -0.25;
+      this.item.rotation.x = this.itemBaseRX;
     }
     this.item.frustumCulled = false;
     this.itemGeo = geo;
@@ -128,19 +136,36 @@ export class ViewModel {
     this.lastSwitch = now;
   }
 
-  update(time) {
+  update(time, mining = false) {
     const dt = Math.min(0.05, Math.max(0, time - this._lastTime));
     this._lastTime = time;
     this.recoil = Math.max(0, this.recoil - dt * 1.6);
 
+    // 挥动：挖掘时循环挥动；松开后完成当前这一次收招
+    if (mining) {
+      this.swing += dt * 3.4;
+      if (this.swing >= 2) this.swing -= 2;
+      if (this.swing <= 0) this.swing = 0.0001;
+    } else if (this.swing > 0) {
+      this.swing += dt * 6;
+      if (this.swing >= 2) this.swing = 0;
+    }
+    let s = this.swing % 2;
+    if (s > 1) s = 2 - s;
+    const pose = this.swing > 0 ? Math.sin(s * Math.PI) : 0;
+
     const bob = Math.sin(time * 5.5) * 0.018;
-    this.arm.position.y = -0.33 + bob;
-    this.hand.position.y = -0.37 + bob;
+    this.arm.position.y = -0.30 + bob;
+    this.hand.position.y = -0.19 + bob;
+    this.arm.rotation.x = 0.2 - 0.5 * pose;
+
     if (this.item) {
       const since = time - this.lastSwitch;
       const popIn = since < 0.12 ? 0.6 + (since / 0.12) * 0.4 : 1;
       this.item.scale.setScalar(popIn);
-      this.item.position.y = -0.36 + Math.sin(time * 1.4) * 0.01;
+      this.item.position.y = this.itemBaseY + Math.sin(time * 1.4) * 0.01 - 0.06 * pose;
+      this.item.position.z = this.itemBaseZ + 0.10 * pose;
+      this.item.rotation.x = this.itemBaseRX - 1.15 * pose;
     }
 
     // 后坐力：整组向后上抬
