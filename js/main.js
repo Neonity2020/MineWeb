@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916v";
-import { Player } from "./player.js?v=20260916v";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isFood, isArmor, isSolid } from "./blocks.js?v=20260916v";
-import { drawTileTo } from "./textures.js?v=20260916v";
-import { Inventory } from "./inventory.js?v=20260916v";
-import { RECIPES } from "./recipes.js?v=20260916v";
-import { ViewModel } from "./viewmodel.js?v=20260916v";
-import { MobManager } from "./mobs.js?v=20260916v";
-import { sfx } from "./audio.js?v=20260916v";
-import { IntroCinematic } from "./intro.js?v=20260916v";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916w";
+import { Player } from "./player.js?v=20260916w";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isFood, isArmor, isSolid } from "./blocks.js?v=20260916w";
+import { drawTileTo } from "./textures.js?v=20260916w";
+import { Inventory } from "./inventory.js?v=20260916w";
+import { RECIPES } from "./recipes.js?v=20260916w";
+import { ViewModel } from "./viewmodel.js?v=20260916w";
+import { MobManager } from "./mobs.js?v=20260916w";
+import { sfx } from "./audio.js?v=20260916w";
+import { IntroCinematic } from "./intro.js?v=20260916w";
 
-const BUILD = "20260916v";
+const BUILD = "20260916w";
 console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
@@ -1369,7 +1369,7 @@ function tryAttack() {
 }
 
 // 近战伤害：持剑时按等级递增，否则徒手
-const SWORD_DAMAGE = { 1: 4, 2: 5, 3: 7 };
+const SWORD_DAMAGE = { 1: 4, 2: 5, 3: 7, 4: 12 };
 function meleeDamage() {
   const t = heldTool();
   if (t && t.type === "sword") return SWORD_DAMAGE[t.tier] || 4;
@@ -1638,6 +1638,7 @@ if (new URLSearchParams(location.search).has("debug")) {
     miningSpeedFor,
     toolYields,
     canMine,
+    meleeDamage,
     heldTool,
     toolDurability,
     selectSlot,

@@ -44,6 +44,7 @@ export const WITHER_HELMET = 40;
 export const WITHER_CHEST = 41;
 export const WITHER_LEGS = 42;
 export const WITHER_BOOTS = 43;
+export const WITHER_SWORD = 44;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -94,6 +95,7 @@ export const TILES = [
   "wither_chest",
   "wither_legs",
   "wither_boots",
+  "wither_sword",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -300,6 +302,7 @@ export const BLOCKS = {
   [WITHER_CHEST]: armorDef(WITHER_CHEST, "凋灵胸甲", TILE.wither_chest, "chest", 8),
   [WITHER_LEGS]: armorDef(WITHER_LEGS, "凋灵护腿", TILE.wither_legs, "legs", 6),
   [WITHER_BOOTS]: armorDef(WITHER_BOOTS, "凋灵战靴", TILE.wither_boots, "boots", 3),
+  [WITHER_SWORD]: toolDef(WITHER_SWORD, "凋零剑", TILE.wither_sword, "sword", 1.5, 1500, 4),
 };
 
 function toolDef(id, name, tile, type, speed, durability, tier = 1) {
@@ -368,6 +371,7 @@ export const HOTBAR = [
   IRON_AXE,
   IRON_SHOVEL,
   IRON_SWORD,
+  WITHER_SWORD,
   PISTOL,
   SHOTGUN,
   SMG,

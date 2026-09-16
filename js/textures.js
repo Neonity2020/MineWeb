@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260916v";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260916w";
 
 const SIZE = 16;
 
@@ -249,6 +249,27 @@ const PAINTERS = {
     if (!part) return [0, 0, 0, 0];
     const n = rnd() * 18 - 9;
     const base = part === "accent" ? [156, 104, 208] : [74, 56, 102];
+    return [...shade(base, n), 255];
+  },
+  wither_sword(x, y, rnd) {
+    let part = null;
+    // 剑身（对角）
+    if (Math.abs(x + y - 18) <= 1 && x >= 7) part = "blade";
+    // 剑尖
+    if (x + y >= 23 && x >= 11 && y >= 11) part = "blade";
+    // 血槽高光
+    if (x + y === 18 && x >= 9 && x <= 12) part = "edge";
+    // 护手
+    if (x >= 3 && x <= 7 && y >= 9 && y <= 11) part = "guard";
+    // 手柄（与剑身同一条对角线，向下延伸）
+    if (Math.abs(x + y - 16) <= 1 && x >= 4 && x <= 7) part = "handle";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 18 - 9;
+    let base;
+    if (part === "edge") base = [180, 124, 236];
+    else if (part === "blade") base = [74, 56, 102];
+    else if (part === "guard") base = [46, 34, 66];
+    else base = [120, 86, 56];
     return [...shade(base, n), 255];
   },
   boss_trophy(x, y, rnd) {
