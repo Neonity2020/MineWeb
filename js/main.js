@@ -8,6 +8,7 @@ import { RECIPES } from "./recipes.js?v=20260915c";
 import { ViewModel } from "./viewmodel.js?v=20260915c";
 import { MobManager } from "./mobs.js?v=20260915c";
 import { sfx } from "./audio.js?v=20260915c";
+import { IntroCinematic } from "./intro.js?v=20260915c";
 
 const BUILD = "20260915c";
 console.log(`MineWeb build ${BUILD}`);
@@ -15,6 +16,7 @@ console.log(`MineWeb build ${BUILD}`);
 const canvas = document.getElementById("game");
 const overlay = document.getElementById("overlay");
 const playBtn = document.getElementById("playBtn");
+const introBtn = document.getElementById("introBtn");
 const loading = document.getElementById("loading");
 const loadingBar = document.getElementById("loadingBar");
 const loadingPct = document.getElementById("loadingPct");
@@ -559,6 +561,23 @@ function toast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1900);
 }
 
+// 3D 电影级开场运镜与视频导出控制器
+const intro = new IntroCinematic({
+  camera,
+  world,
+  player,
+  viewmodel,
+  renderer,
+  canvas,
+  toast,
+  onFinish: ({ skipped }) => {
+    overlay.classList.remove("hidden");
+    if (!skipped) {
+      toast("开场动画播放完毕，点击「开始游戏」踏上征程！");
+    }
+  },
+});
+
 function saveGame(silent = false) {
   if (!booted) return;
   const payload = {
@@ -696,6 +715,7 @@ async function startNewGame() {
 
 // ---------- 输入 ----------
 canvas.addEventListener("click", () => {
+  if (intro && intro.isActive()) return;
   if (document.pointerLockElement !== canvas) lockPointer();
 });
 
@@ -704,7 +724,16 @@ playBtn.addEventListener("click", (e) => {
   lockPointer();
 });
 
+if (introBtn) {
+  introBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    overlay.classList.add("hidden");
+    intro.start();
+  });
+}
+
 overlay.addEventListener("click", () => {
+  if (intro && intro.isActive()) return;
   lockPointer();
 });
 
@@ -737,8 +766,8 @@ document.addEventListener("pointerlockchange", () => {
   playBtn.textContent = started ? "回到游戏" : "开始游戏";
   // 未锁定鼠标（菜单 / 合成面板 / 命令模式）时暂停世界，锁定后恢复
   paused = !locked;
-  // 打开合成面板/命令模式时释放鼠标，此时不要弹出开始菜单
-  overlay.classList.toggle("hidden", locked || craftingOpen || commandOpen);
+  // 打开合成面板/命令模式或播放开场动画时释放鼠标，此时不要弹出开始菜单
+  overlay.classList.toggle("hidden", locked || craftingOpen || commandOpen || (intro && intro.isActive()));
 });
 
 document.addEventListener("mousemove", (e) => {
@@ -748,6 +777,13 @@ document.addEventListener("mousemove", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (intro && intro.isActive()) {
+    if (e.code === "Escape" || e.code === "Space") {
+      e.preventDefault();
+      intro.stop(true);
+      return;
+    }
+  }
   if (commandOpen) return;
   if ((e.ctrlKey || e.metaKey) && e.code === "KeyS") {
     e.preventDefault();
@@ -1403,6 +1439,12 @@ function animate() {
     oreMarker.material.opacity = 0.55 + 0.45 * Math.sin(time * 8);
   }
 
+  if (intro && intro.isActive()) {
+    intro.update(dt);
+    renderer.render(scene, camera);
+    return;
+  }
+
   if (paused) {
     renderer.render(scene, camera);
     return;
@@ -1546,6 +1588,7 @@ if (new URLSearchParams(location.search).has("debug")) {
     readSave,
     mobs,
     BOSS_ARENA,
+    intro,
     setCreative: (v) => {
       creative = v;
       updateMode();

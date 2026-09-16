@@ -444,6 +444,29 @@ body {
   transform: translateY(3px);
   box-shadow: 0 1px 0 #2f5c1f;
 }
+.intro-launch-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff4d0;
+  cursor: pointer;
+  border: 1px solid rgba(255, 215, 100, 0.4);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #d9822b, #a85817);
+  box-shadow: 0 4px 0 #6e3508, 0 0 16px rgba(230, 140, 40, 0.25);
+  transition: transform 0.06s ease, filter 0.15s ease, box-shadow 0.2s ease;
+}
+.intro-launch-btn:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 4px 0 #6e3508, 0 0 22px rgba(240, 160, 50, 0.45);
+}
+.intro-launch-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #6e3508;
+}
 .menu-row {
   display: flex;
   gap: 10px;
@@ -805,4 +828,198 @@ kbd {
   background: rgba(240, 184, 106, 0.12);
   border: 1px solid rgba(240, 184, 106, 0.35);
 }
+
+/* ---------- 3D 电影级开场运镜与录制面板 ---------- */
+body.intro-mode #crosshair,
+body.intro-mode #hud,
+body.intro-mode #hotbar,
+body.intro-mode #health,
+body.intro-mode #hunger,
+body.intro-mode #heldName,
+body.intro-mode #bossbar,
+body.intro-mode #minebar {
+  display: none !important;
+}
+
+#introOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#introOverlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+#introOverlay.hidden {
+  display: none;
+}
+
+/* 上下电影黑边遮幅 */
+.intro-bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 11vh;
+  min-height: 56px;
+  max-height: 110px;
+  background: #000;
+  z-index: 2;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+}
+.intro-bar-top {
+  top: 0;
+}
+.intro-bar-bottom {
+  bottom: 0;
+}
+
+/* 居中字幕展台 */
+.intro-content {
+  position: absolute;
+  left: 50%;
+  bottom: 15vh;
+  transform: translateX(-50%);
+  z-index: 3;
+  text-align: center;
+  pointer-events: none;
+  width: 90%;
+  max-width: 900px;
+}
+
+.intro-title {
+  font-size: clamp(32px, 5vw, 54px);
+  font-weight: 800;
+  letter-spacing: 4px;
+  background: linear-gradient(180deg, #fff7d0 0%, #f5be38 60%, #c48212 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.9);
+  filter: drop-shadow(0 2px 8px rgba(245, 190, 56, 0.35));
+  margin-bottom: 8px;
+}
+
+.intro-subtitle {
+  font-size: clamp(14px, 2vw, 20px);
+  color: #e6eff5;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.fade-in {
+  animation: introTextFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes introTextFade {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 控制栏与录制状态 */
+.intro-controls {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+}
+
+.intro-progress-track {
+  width: 100%;
+  max-width: 680px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.intro-progress-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #ffc83b, #ff7426);
+  transition: width 0.1s linear;
+}
+
+.intro-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.intro-action-btn {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 24, 30, 0.8);
+  color: #eaf0f6;
+  backdrop-filter: blur(8px);
+  transition: all 0.15s ease;
+}
+
+.intro-action-btn:hover {
+  background: rgba(40, 48, 60, 0.9);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+.intro-action-btn:active {
+  transform: translateY(1px);
+}
+
+.intro-action-btn.record-btn {
+  border-color: rgba(255, 80, 80, 0.5);
+  color: #ffdada;
+}
+
+.intro-action-btn.record-btn:hover {
+  background: rgba(80, 20, 20, 0.85);
+  border-color: #ff5050;
+}
+
+.intro-action-btn.record-btn.recording {
+  background: rgba(180, 20, 20, 0.9);
+  border-color: #ff3333;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 50, 50, 0.6);
+}
+
+.rec-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: pulseDot 1s infinite alternate ease-in-out;
+}
+
+@keyframes pulseDot {
+  from { opacity: 0.3; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.2); }
+}
+
+.intro-action-btn.skip-btn {
+  opacity: 0.85;
+}
+.intro-action-btn.skip-btn:hover {
+  opacity: 1;
+}
+
 

@@ -266,6 +266,37 @@ export const sfx = {
     muted = !muted;
     return muted;
   },
+  playIntroBGM() {
+    const c = ensureCtx();
+    if (!c || muted) return;
+    if (c.state === "suspended") c.resume().catch(() => {});
+    // 经典 Minecraft 风格：温暖、空灵、平静的钟琴/电钢琴感旋律
+    const notes = [
+      [261.63, 0.0, 2.5, 0.18],  // C4
+      [329.63, 0.8, 2.5, 0.16],  // E4
+      [392.00, 1.6, 2.8, 0.16],  // G4
+      [523.25, 2.4, 3.2, 0.18],  // C5
+      [440.00, 4.0, 3.0, 0.16],  // A4
+      [329.63, 4.8, 2.6, 0.14],  // E4
+      [392.00, 5.6, 3.0, 0.15],  // G4
+      [349.23, 7.2, 3.0, 0.16],  // F4
+      [261.63, 8.0, 2.8, 0.15],  // C4
+      [329.63, 8.8, 3.2, 0.16],  // E4
+      [392.00, 10.4, 3.5, 0.18], // G4
+      [587.33, 11.2, 3.2, 0.15], // D5
+      [523.25, 12.0, 4.0, 0.20], // C5
+      [392.00, 13.5, 3.5, 0.16], // G4
+      [329.63, 15.0, 4.0, 0.18], // E4
+      [261.63, 16.5, 4.5, 0.20], // C4
+    ];
+    for (const [freq, delay, dur, gain] of notes) {
+      tone({ type: "sine", f0: freq, dur, gain, delay, attack: 0.12, hold: 0.2 });
+      tone({ type: "triangle", f0: freq * 2, dur: dur * 0.7, gain: gain * 0.35, delay: delay + 0.01, attack: 0.08, hold: 0.1 });
+    }
+  },
+  stopIntroBGM() {
+    // 预留停止接口
+  },
 };
 
 // 浏览器自动播放策略：首次用户手势时解锁 AudioContext
