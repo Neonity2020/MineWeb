@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { sfx } from "./audio.js?v=20260916t";
+import { sfx } from "./audio.js?v=20260916u";
 
 export class IntroCinematic {
   constructor({ camera, world, player, viewmodel, renderer, canvas, onFinish, toast }) {

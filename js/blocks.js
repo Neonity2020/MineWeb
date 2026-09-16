@@ -38,6 +38,7 @@ export const IRON_SHOVEL = 34;
 export const IRON_SWORD = 35;
 export const SHOTGUN = 36;
 export const BOSS_TROPHY = 37;
+export const SMG = 38;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -82,6 +83,7 @@ export const TILES = [
   "iron_sword",
   "shotgun",
   "boss_trophy",
+  "smg",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -261,6 +263,22 @@ export const BLOCKS = {
     renderPass: "none",
     placeable: false,
   }),
+  [SMG]: def(SMG, "冲锋枪", all(TILE.smg), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    // 全自动：按住左键连续射击，射速高、单发威力低、弹道略散
+    gun: {
+      damage: 4,
+      cooldown: 0.08,
+      range: 30,
+      spread: 0.04,
+      sound: "smg",
+      kick: 0.09,
+      auto: true,
+    },
+  }),
 };
 
 function toolDef(id, name, tile, type, speed, durability, tier = 1) {
@@ -313,6 +331,7 @@ export const HOTBAR = [
   IRON_SWORD,
   PISTOL,
   SHOTGUN,
+  SMG,
   FLINT_STEEL,
   RAW_PORK,
   RAW_CHICKEN,

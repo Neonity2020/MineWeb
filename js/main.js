@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916t";
-import { Player } from "./player.js?v=20260916t";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260916t";
-import { drawTileTo } from "./textures.js?v=20260916t";
-import { Inventory } from "./inventory.js?v=20260916t";
-import { RECIPES } from "./recipes.js?v=20260916t";
-import { ViewModel } from "./viewmodel.js?v=20260916t";
-import { MobManager } from "./mobs.js?v=20260916t";
-import { sfx } from "./audio.js?v=20260916t";
-import { IntroCinematic } from "./intro.js?v=20260916t";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916u";
+import { Player } from "./player.js?v=20260916u";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, isTool, isPlaceable, isGun, isFood, isSolid } from "./blocks.js?v=20260916u";
+import { drawTileTo } from "./textures.js?v=20260916u";
+import { Inventory } from "./inventory.js?v=20260916u";
+import { RECIPES } from "./recipes.js?v=20260916u";
+import { ViewModel } from "./viewmodel.js?v=20260916u";
+import { MobManager } from "./mobs.js?v=20260916u";
+import { sfx } from "./audio.js?v=20260916u";
+import { IntroCinematic } from "./intro.js?v=20260916u";
 
-const BUILD = "20260915c";
+const BUILD = "20260916u";
 console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
@@ -123,6 +123,7 @@ for (let i = 0; i < TRACER_POOL; i++) {
   tracers.push({ line, mat, timer: 0 });
 }
 let gunCooldown = 0;
+let firingHeld = false; // 是否按住左键（用于全自动武器连发）
 
 // ---------- 物品栏 / 背包 ----------
 let selected = 0;
@@ -761,6 +762,7 @@ document.addEventListener("pointerlockchange", () => {
   const locked = document.pointerLockElement === canvas;
   if (!locked) {
     player.keys.clear();
+    firingHeld = false;
     miningHeld = false;
     mineKey = null;
     mineProgress = 0;
@@ -879,6 +881,7 @@ document.addEventListener("mousedown", (e) => {
   if (e.button === 0) {
     // 手持枪械：射击
     if (isGun(HOTBAR[selected])) {
+      firingHeld = true;
       fireGun();
       return;
     }
@@ -900,6 +903,7 @@ document.addEventListener("mousedown", (e) => {
 
 document.addEventListener("mouseup", (e) => {
   if (e.button === 0) {
+    firingHeld = false;
     miningHeld = false;
     mineKey = null;
     mineProgress = 0;
@@ -1548,6 +1552,12 @@ function animate() {
     }
   }
   updateMineBar();
+
+  // 全自动武器：按住左键持续射击（fireGun 内部按冷却节流）
+  if (firingHeld && !craftingOpen && document.pointerLockElement === canvas) {
+    const g = heldGun();
+    if (g && g.auto) fireGun();
+  }
 
   renderer.render(scene, camera);
   // 单独渲染手部模型：清除深度缓冲后叠加，保证永远显示在最前

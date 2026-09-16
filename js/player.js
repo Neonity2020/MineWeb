@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { isSolid, WATER } from "./blocks.js?v=20260916t";
+import { isSolid, WATER } from "./blocks.js?v=20260916u";
 
 const HALF_WIDTH = 0.3;
 const HEIGHT = 1.8;

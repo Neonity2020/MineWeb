@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260916t";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260916u";
 
 const SIZE = 16;
 
@@ -172,6 +172,34 @@ const PAINTERS = {
     if (part === "wood") base = [104, 70, 40];
     else if (part === "groove") base = [40, 42, 48];
     else base = [78, 82, 92];
+    return [...shade(base, n), 255];
+  },
+  smg(x, y, rnd) {
+    let part = null;
+    // 枪管
+    if (y >= 4 && y <= 5 && x >= 1 && x <= 8) part = "metal";
+    // 枪口
+    if (y >= 4 && y <= 5 && x === 0) part = "groove";
+    // 机匣
+    if (x >= 9 && x <= 13 && y >= 3 && y <= 6) part = "metal";
+    // 顶部导轨 / 照门
+    if (y >= 2 && y <= 3 && x >= 9 && x <= 12) part = "groove";
+    // 前准星
+    if (y === 3 && x >= 3 && x <= 4) part = "groove";
+    // 弹匣（下弯）
+    if (x >= 8 && x <= 10 && y >= 7 && y <= 11) part = "mag";
+    if (x >= 10 && x <= 11 && y >= 11 && y <= 12) part = "mag";
+    // 握把
+    if (x >= 11 && x <= 12 && y >= 7 && y <= 11) part = "wood";
+    // 折叠枪托
+    if (x >= 13 && x <= 15 && y >= 4 && y <= 6) part = "metal";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 16 - 8;
+    let base;
+    if (part === "wood") base = [104, 70, 40];
+    else if (part === "mag") base = [52, 55, 62];
+    else if (part === "groove") base = [38, 40, 46];
+    else base = [80, 84, 94];
     return [...shade(base, n), 255];
   },
   boss_trophy(x, y, rnd) {

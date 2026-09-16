@@ -204,6 +204,11 @@ const SOUNDS = {
     tone({ type: "square", f0: 150, f1: 40, dur: 0.22, gain: 0.28 });
     tone({ type: "sawtooth", f0: 90, f1: 30, dur: 0.3, gain: 0.14, delay: 0.02 });
   },
+  // 冲锋枪声：短促干脆、音调偏高
+  smg() {
+    noise({ dur: 0.08, gain: 0.32, type: "lowpass", freq: 4200, freqEnd: 380, q: 0.85 });
+    tone({ type: "square", f0: 300, f1: 90, dur: 0.06, gain: 0.16 });
+  },
   // 爆头提示音
   headshot() {
     tone({ type: "sine", f0: 1200, f1: 1900, dur: 0.14, gain: 0.2 });
