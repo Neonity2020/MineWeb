@@ -176,6 +176,46 @@ body {
   box-shadow: 0 0 6px rgba(180, 120, 255, 0.9);
 }
 
+/* ---------- 狙击镜 ---------- */
+#scope {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent 25%,
+    rgba(0, 0, 0, 0.55) 30%,
+    rgba(0, 0, 0, 0.985) 35%
+  );
+}
+#scope.active {
+  opacity: 1;
+}
+#scope::before,
+#scope::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, 0.45);
+}
+#scope::before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+#scope::after {
+  top: 50%;
+  left: 0;
+  height: 1px;
+  width: 100%;
+  transform: translateY(-50%);
+}
+
 /* ---------- 顶部信息 ---------- */
 #hud {
   position: fixed;
@@ -901,6 +941,7 @@ body.intro-mode #armor,
 body.intro-mode #heldName,
 body.intro-mode #bossbar,
 body.intro-mode #chargebar,
+body.intro-mode #scope,
 body.intro-mode #minebar {
   display: none !important;
 }

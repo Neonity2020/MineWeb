@@ -25,6 +25,7 @@ import {
   PISTOL,
   SHOTGUN,
   SMG,
+  SNIPER,
   FLINT_STEEL,
   BOSS_TROPHY,
   WITHER_INGOT,
@@ -34,7 +35,7 @@ import {
   WITHER_BOOTS,
   WITHER_SWORD,
   WITHER_BOW,
-} from "./blocks.js?v=20260916x";
+} from "./blocks.js?v=20260916y";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
 // basic: true 表示无需工作台即可在背包直接合成（仅用于开局搭建工作台的基础配方）
@@ -68,6 +69,7 @@ export const RECIPES = [
   { out: { id: PISTOL, n: 1 }, in: [{ id: IRON_INGOT, n: 3 }, { id: STICK, n: 1 }, { id: GLASS, n: 1 }] },
   { out: { id: SHOTGUN, n: 1 }, in: [{ id: IRON_INGOT, n: 5 }, { id: STICK, n: 2 }, { id: GLASS, n: 1 }] },
   { out: { id: SMG, n: 1 }, in: [{ id: IRON_INGOT, n: 4 }, { id: STICK, n: 2 }] },
+  { out: { id: SNIPER, n: 1 }, in: [{ id: IRON_INGOT, n: 6 }, { id: STICK, n: 2 }, { id: GLASS, n: 2 }] },
 
   // 凋零套装：凋灵之心熔炼成合金锭，再锻造成护甲
   { out: { id: WITHER_INGOT, n: 16 }, in: [{ id: BOSS_TROPHY, n: 1 }, { id: IRON_INGOT, n: 6 }] },

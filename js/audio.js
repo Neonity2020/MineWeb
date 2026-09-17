@@ -209,6 +209,12 @@ const SOUNDS = {
     noise({ dur: 0.08, gain: 0.32, type: "lowpass", freq: 4200, freqEnd: 380, q: 0.85 });
     tone({ type: "square", f0: 300, f1: 90, dur: 0.06, gain: 0.16 });
   },
+  // 狙击枪声：尖锐爆响 + 低沉长回响
+  sniper() {
+    noise({ dur: 0.32, gain: 0.62, type: "lowpass", freq: 5200, freqEnd: 90, q: 0.5 });
+    tone({ type: "square", f0: 180, f1: 34, dur: 0.3, gain: 0.3 });
+    tone({ type: "sawtooth", f0: 70, f1: 26, dur: 0.5, gain: 0.16, delay: 0.03 });
+  },
   // 弓弦释放：低沉"嗡"的一声
   bow() {
     tone({ type: "triangle", f0: 340, f1: 120, dur: 0.2, gain: 0.2 });

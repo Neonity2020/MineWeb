@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916x";
-import { Player } from "./player.js?v=20260916x";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isBow, isFood, isArmor, isSolid } from "./blocks.js?v=20260916x";
-import { drawTileTo } from "./textures.js?v=20260916x";
-import { Inventory } from "./inventory.js?v=20260916x";
-import { RECIPES } from "./recipes.js?v=20260916x";
-import { ViewModel } from "./viewmodel.js?v=20260916x";
-import { MobManager } from "./mobs.js?v=20260916x";
-import { sfx } from "./audio.js?v=20260916x";
-import { IntroCinematic } from "./intro.js?v=20260916x";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916y";
+import { Player } from "./player.js?v=20260916y";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isBow, isFood, isArmor, isSolid } from "./blocks.js?v=20260916y";
+import { drawTileTo } from "./textures.js?v=20260916y";
+import { Inventory } from "./inventory.js?v=20260916y";
+import { RECIPES } from "./recipes.js?v=20260916y";
+import { ViewModel } from "./viewmodel.js?v=20260916y";
+import { MobManager } from "./mobs.js?v=20260916y";
+import { sfx } from "./audio.js?v=20260916y";
+import { IntroCinematic } from "./intro.js?v=20260916y";
 
-const BUILD = "20260916x";
+const BUILD = "20260916y";
 console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
@@ -39,6 +39,7 @@ const minebarEl = document.getElementById("minebar");
 const mineFillEl = document.getElementById("mineFill");
 const chargebarEl = document.getElementById("chargebar");
 const chargeFillEl = document.getElementById("chargeFill");
+const scopeEl = document.getElementById("scope");
 const healthEl = document.getElementById("health");
 const hungerEl = document.getElementById("hunger");
 const armorEl = document.getElementById("armor");
@@ -65,6 +66,7 @@ scene.background = SKY;
 scene.fog = new THREE.Fog(SKY, 55, 130);
 
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 500);
+const BASE_FOV = 72;
 scene.add(camera);
 
 // 手部/手持物模型：独立视图相机 + 场景，叠加渲染，避免被地形深度裁掉
@@ -127,6 +129,7 @@ for (let i = 0; i < TRACER_POOL; i++) {
 }
 let gunCooldown = 0;
 let firingHeld = false; // 是否按住左键（用于全自动武器连发）
+let scoping = false; // 狙击镜是否开启
 
 // ---------- 凋零弓：蓄力 + 箭矢投射物 ----------
 const ARROW_POOL = 24;
@@ -795,6 +798,7 @@ document.addEventListener("pointerlockchange", () => {
     bowCharging = false;
     bowCharge = 0;
     updateChargeBar();
+    endScope();
     miningHeld = false;
     mineKey = null;
     mineProgress = 0;
@@ -929,6 +933,8 @@ document.addEventListener("mousedown", (e) => {
   } else if (e.button === 2) {
     // 手持弓：开始蓄力
     if (beginBowDraw()) return;
+    // 手持带镜枪械：开镜
+    if (beginScope()) return;
     if (tryUseItem()) return;
     if (tryEat()) return;
     placeBlock();
@@ -944,6 +950,7 @@ document.addEventListener("mouseup", (e) => {
     updateMineBar();
   } else if (e.button === 2) {
     releaseBow();
+    endScope();
   }
 });
 
@@ -1208,6 +1215,25 @@ function heldBow() {
   return BLOCKS[id].bow;
 }
 
+// 狙击开镜：变焦 + 收束弹道
+function beginScope() {
+  const g = heldGun();
+  if (!g || !g.scope) return false;
+  if (!scoping) {
+    scoping = true;
+    scopeEl.classList.add("active");
+    viewmodel.showItem(AIR); // 开镜时收起手中武器
+  }
+  return true;
+}
+
+function endScope() {
+  if (!scoping) return;
+  scoping = false;
+  scopeEl.classList.remove("active");
+  updateHotbar();
+}
+
 // 挖掘速度：匹配方块偏好工具且达到等级时用工具速度，否则徒手
 function miningSpeedFor(blockId) {
   const t = heldTool();
@@ -1464,7 +1490,8 @@ function fireGun() {
   const origin = player.eyePosition;
   const baseDir = player.getLookDirection();
   const pellets = gun.pellets || 1;
-  const spread = gun.spread || 0;
+  const scopeMul = scoping && gun.scope ? gun.scope.spreadMul ?? 0.15 : 1;
+  const spread = (gun.spread || 0) * scopeMul;
   let headshotMob = null;
 
   for (let i = 0; i < pellets; i++) {
@@ -1775,6 +1802,15 @@ function animate() {
   updateChargeBar();
   updateArrows(dt);
 
+  // 狙击开镜：FOV 平滑过渡（切枪/失焦自动关闭）
+  const scopeGun = heldGun();
+  if (scoping && (!scopeGun || !scopeGun.scope)) endScope();
+  const targetFov = scoping && scopeGun && scopeGun.scope ? BASE_FOV * scopeGun.scope.fov : BASE_FOV;
+  if (Math.abs(camera.fov - targetFov) > 0.05) {
+    camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 14);
+    camera.updateProjectionMatrix();
+  }
+
   // 全自动武器：按住左键持续射击（fireGun 内部按冷却节流）
   if (firingHeld && !craftingOpen && document.pointerLockElement === canvas) {
     const g = heldGun();
@@ -1816,11 +1852,15 @@ if (new URLSearchParams(location.search).has("debug")) {
     canMine,
     meleeDamage,
     heldBow,
+    heldGun,
     beginBowDraw,
     releaseBow,
     spawnArrow,
     updateArrows,
     arrows,
+    beginScope,
+    endScope,
+    isScoping: () => scoping,
     heldTool,
     toolDurability,
     selectSlot,

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260916x";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260916y";
 
 const SIZE = 16;
 
@@ -200,6 +200,38 @@ const PAINTERS = {
     else if (part === "mag") base = [52, 55, 62];
     else if (part === "groove") base = [38, 40, 46];
     else base = [80, 84, 94];
+    return [...shade(base, n), 255];
+  },
+  sniper(x, y, rnd) {
+    let part = null;
+    // 细长枪管
+    if (y >= 5 && y <= 6 && x >= 1 && x <= 9) part = "metal";
+    // 枪口制退器
+    if (y >= 4 && y <= 7 && x === 0) part = "groove";
+    // 机匣
+    if (x >= 9 && x <= 13 && y >= 4 && y <= 7) part = "metal";
+    // 瞄准镜筒
+    if (y >= 1 && y <= 3 && x >= 7 && x <= 12) part = "groove";
+    // 镜片
+    if (y >= 1 && y <= 3 && x === 7) part = "lens";
+    // 镜架
+    if (y === 3 && (x === 8 || x === 11)) part = "metal";
+    // 弹匣
+    if (x >= 10 && x <= 11 && y >= 8 && y <= 10) part = "mag";
+    // 扳机护圈
+    if (x >= 12 && x <= 13 && y >= 8 && y <= 9) part = "metal";
+    // 握把
+    if (x >= 12 && x <= 13 && y >= 9 && y <= 12) part = "wood";
+    // 枪托
+    if (x >= 13 && x <= 15 && y >= 5 && y <= 8) part = "wood";
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 16 - 8;
+    let base;
+    if (part === "lens") base = [120, 200, 230];
+    else if (part === "wood") base = [104, 70, 40];
+    else if (part === "mag") base = [52, 55, 62];
+    else if (part === "groove") base = [38, 40, 46];
+    else base = [78, 82, 92];
     return [...shade(base, n), 255];
   },
   wither_ingot(x, y, rnd) {

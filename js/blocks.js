@@ -46,6 +46,7 @@ export const WITHER_LEGS = 42;
 export const WITHER_BOOTS = 43;
 export const WITHER_SWORD = 44;
 export const WITHER_BOW = 45;
+export const SNIPER = 46;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -98,6 +99,7 @@ export const TILES = [
   "wither_boots",
   "wither_sword",
   "wither_bow",
+  "sniper",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -213,6 +215,22 @@ export const BLOCKS = {
     placeable: false,
     // 一次射出多颗弹丸，近距离威力大、散射明显
     gun: { damage: 4, cooldown: 0.9, range: 22, pellets: 8, spread: 0.11, sound: "shotgun", kick: 0.3 },
+  }),
+  [SNIPER]: def(SNIPER, "狙击步枪", all(TILE.sniper), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    // 栓动狙击：极高单发伤害、超远射程、慢射速；右键开镜（变焦+收束）
+    gun: {
+      damage: 34,
+      cooldown: 1.6,
+      range: 90,
+      spread: 0.01,
+      sound: "sniper",
+      kick: 0.55,
+      scope: { fov: 0.32, spreadMul: 0.12 },
+    },
   }),
   [RAW_PORK]: def(RAW_PORK, "生猪排", all(TILE.raw_pork), {
     solid: false,
@@ -399,6 +417,7 @@ export const HOTBAR = [
   PISTOL,
   SHOTGUN,
   SMG,
+  SNIPER,
   FLINT_STEEL,
   RAW_PORK,
   RAW_CHICKEN,
