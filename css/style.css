@@ -146,6 +146,36 @@ body {
   background: linear-gradient(90deg, #ffd24a, #ff8a3a);
 }
 
+/* ---------- 弓蓄力 ---------- */
+#chargebar {
+  position: fixed;
+  left: 50%;
+  top: calc(50% + 34px);
+  z-index: 6;
+  transform: translateX(-50%);
+  width: 110px;
+  height: 8px;
+  padding: 1px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+#chargebar.active {
+  opacity: 1;
+}
+#chargeFill {
+  width: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8a5ad0, #c79bff);
+}
+#chargebar.full #chargeFill {
+  background: linear-gradient(90deg, #c79bff, #f0d8ff);
+  box-shadow: 0 0 6px rgba(180, 120, 255, 0.9);
+}
+
 /* ---------- 顶部信息 ---------- */
 #hud {
   position: fixed;
@@ -870,6 +900,7 @@ body.intro-mode #hunger,
 body.intro-mode #armor,
 body.intro-mode #heldName,
 body.intro-mode #bossbar,
+body.intro-mode #chargebar,
 body.intro-mode #minebar {
   display: none !important;
 }

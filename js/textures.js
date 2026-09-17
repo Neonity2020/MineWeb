@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TILES, TILE_COUNT } from "./blocks.js?v=20260916w";
+import { TILES, TILE_COUNT } from "./blocks.js?v=20260916x";
 
 const SIZE = 16;
 
@@ -270,6 +270,21 @@ const PAINTERS = {
     else if (part === "blade") base = [74, 56, 102];
     else if (part === "guard") base = [46, 34, 66];
     else base = [120, 86, 56];
+    return [...shade(base, n), 255];
+  },
+  wither_bow(x, y, rnd) {
+    let part = null;
+    const d = Math.hypot(x - 6, y - 7.5);
+    if (x >= 6 && d >= 4.2 && d <= 5.8) part = "limb"; // 弓臂（C 形）
+    if (x === 4 && y >= 4 && y <= 11) part = "string"; // 弓弦
+    if (y >= 4 && y <= 11 && (y === 4 || y === 11) && x >= 4 && x <= 5) part = "string";
+    if ((x === 6 || x === 7) && y >= 7 && y <= 8) part = "grip"; // 握把
+    if (!part) return [0, 0, 0, 0];
+    const n = rnd() * 16 - 8;
+    let base;
+    if (part === "string") base = [206, 206, 216];
+    else if (part === "grip") base = [120, 86, 56];
+    else base = [92, 66, 128];
     return [...shade(base, n), 255];
   },
   boss_trophy(x, y, rnd) {

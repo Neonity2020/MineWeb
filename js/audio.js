@@ -209,6 +209,11 @@ const SOUNDS = {
     noise({ dur: 0.08, gain: 0.32, type: "lowpass", freq: 4200, freqEnd: 380, q: 0.85 });
     tone({ type: "square", f0: 300, f1: 90, dur: 0.06, gain: 0.16 });
   },
+  // 弓弦释放：低沉"嗡"的一声
+  bow() {
+    tone({ type: "triangle", f0: 340, f1: 120, dur: 0.2, gain: 0.2 });
+    noise({ dur: 0.12, gain: 0.12, type: "lowpass", freq: 1800, freqEnd: 500, q: 0.6 });
+  },
   // 爆头提示音
   headshot() {
     tone({ type: "sine", f0: 1200, f1: 1900, dur: 0.14, gain: 0.2 });

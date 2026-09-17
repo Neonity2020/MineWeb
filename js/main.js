@@ -1,16 +1,16 @@
 import * as THREE from "three";
-import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916w";
-import { Player } from "./player.js?v=20260916w";
-import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isFood, isArmor, isSolid } from "./blocks.js?v=20260916w";
-import { drawTileTo } from "./textures.js?v=20260916w";
-import { Inventory } from "./inventory.js?v=20260916w";
-import { RECIPES } from "./recipes.js?v=20260916w";
-import { ViewModel } from "./viewmodel.js?v=20260916w";
-import { MobManager } from "./mobs.js?v=20260916w";
-import { sfx } from "./audio.js?v=20260916w";
-import { IntroCinematic } from "./intro.js?v=20260916w";
+import { World, WORLD_SIZE, CHUNKS_X, CHUNKS_Z, BOSS_ARENA } from "./world.js?v=20260916x";
+import { Player } from "./player.js?v=20260916x";
+import { BLOCKS, HOTBAR, AIR, WATER, BEDROCK, IRON_ORE, COBBLESTONE, CRAFTING_TABLE, FLINT_STEEL, CAMPFIRE, ARMOR_PIECES, isTool, isPlaceable, isGun, isBow, isFood, isArmor, isSolid } from "./blocks.js?v=20260916x";
+import { drawTileTo } from "./textures.js?v=20260916x";
+import { Inventory } from "./inventory.js?v=20260916x";
+import { RECIPES } from "./recipes.js?v=20260916x";
+import { ViewModel } from "./viewmodel.js?v=20260916x";
+import { MobManager } from "./mobs.js?v=20260916x";
+import { sfx } from "./audio.js?v=20260916x";
+import { IntroCinematic } from "./intro.js?v=20260916x";
 
-const BUILD = "20260916w";
+const BUILD = "20260916x";
 console.log(`MineWeb build ${BUILD}`);
 
 const canvas = document.getElementById("game");
@@ -37,6 +37,8 @@ const toastEl = document.getElementById("toast");
 const heldNameEl = document.getElementById("heldName");
 const minebarEl = document.getElementById("minebar");
 const mineFillEl = document.getElementById("mineFill");
+const chargebarEl = document.getElementById("chargebar");
+const chargeFillEl = document.getElementById("chargeFill");
 const healthEl = document.getElementById("health");
 const hungerEl = document.getElementById("hunger");
 const armorEl = document.getElementById("armor");
@@ -125,6 +127,31 @@ for (let i = 0; i < TRACER_POOL; i++) {
 }
 let gunCooldown = 0;
 let firingHeld = false; // 是否按住左键（用于全自动武器连发）
+
+// ---------- 凋零弓：蓄力 + 箭矢投射物 ----------
+const ARROW_POOL = 24;
+const arrows = [];
+let bowCharging = false;
+let bowCharge = 0;
+
+function initArrows() {
+  const geo = new THREE.BoxGeometry(0.07, 0.07, 0.62);
+  for (let i = 0; i < ARROW_POOL; i++) {
+    const mat = new THREE.MeshBasicMaterial({ color: 0x8a5ad0 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    scene.add(mesh);
+    arrows.push({ mesh, active: false, pos: new THREE.Vector3(), vel: new THREE.Vector3(), life: 0, dmg: 0 });
+  }
+}
+initArrows();
+
+function deactivateArrow(a) {
+  a.active = false;
+  a.mesh.visible = false;
+}
+
 
 // ---------- 物品栏 / 背包 ----------
 let selected = 0;
@@ -765,6 +792,9 @@ document.addEventListener("pointerlockchange", () => {
   if (!locked) {
     player.keys.clear();
     firingHeld = false;
+    bowCharging = false;
+    bowCharge = 0;
+    updateChargeBar();
     miningHeld = false;
     mineKey = null;
     mineProgress = 0;
@@ -897,6 +927,8 @@ document.addEventListener("mousedown", (e) => {
       mineProgress = 0;
     }
   } else if (e.button === 2) {
+    // 手持弓：开始蓄力
+    if (beginBowDraw()) return;
     if (tryUseItem()) return;
     if (tryEat()) return;
     placeBlock();
@@ -910,6 +942,8 @@ document.addEventListener("mouseup", (e) => {
     mineKey = null;
     mineProgress = 0;
     updateMineBar();
+  } else if (e.button === 2) {
+    releaseBow();
   }
 });
 
@@ -917,6 +951,17 @@ function updateMineBar() {
   const active = miningHeld && mineProgress > 0 && !creative;
   minebarEl.classList.toggle("active", active);
   mineFillEl.style.width = `${Math.min(1, mineProgress) * 100}%`;
+}
+
+// 弓蓄力条
+function updateChargeBar() {
+  const bow = heldBow();
+  const active = bowCharging && !!bow;
+  chargebarEl.classList.toggle("active", active);
+  if (!active) return;
+  const pct = Math.min(1, bowCharge / bow.chargeTime);
+  chargeFillEl.style.width = `${pct * 100}%`;
+  chargebarEl.classList.toggle("full", pct >= 1);
 }
 
 // 脚步声：按移动速度与地面材质定节奏
@@ -1153,6 +1198,14 @@ function heldGun() {
   if (!isGun(id)) return null;
   if (!creative && inventory.count(id) <= 0) return null;
   return BLOCKS[id].gun;
+}
+
+// 当前手持弓（未持有或非弓则返回 null）
+function heldBow() {
+  const id = HOTBAR[selected];
+  if (!isBow(id)) return null;
+  if (!creative && inventory.count(id) <= 0) return null;
+  return BLOCKS[id].bow;
 }
 
 // 挖掘速度：匹配方块偏好工具且达到等级时用工具速度，否则徒手
@@ -1443,6 +1496,116 @@ function fireGun() {
   return true;
 }
 
+// ---------- 凋零弓 ----------
+function beginBowDraw() {
+  if (!heldBow()) return false;
+  bowCharging = true;
+  bowCharge = 0;
+  return true;
+}
+
+// 松开右键：按蓄力发射箭矢
+function releaseBow() {
+  if (!bowCharging) return;
+  const bow = heldBow();
+  bowCharging = false;
+  const power = Math.max(bow ? bow.minPower : 0.3, Math.min(1, bowCharge / (bow ? bow.chargeTime : 1)));
+  bowCharge = 0;
+  updateChargeBar();
+  if (!bow) return;
+
+  const origin = player.eyePosition.clone();
+  const dir = player.getLookDirection();
+  // 从眼睛前方一点出射，避免立刻撞到自己
+  spawnArrow(
+    origin.clone().addScaledVector(dir, 0.6),
+    dir,
+    bow.speed * power,
+    (bow.damage || 10) * power,
+    bow.gravity,
+    bow.range
+  );
+  player.addExhaustion(0.1);
+  sfx.play("bow");
+  if (!creative) consumeDurability();
+}
+
+function spawnArrow(origin, dir, speed, damage, gravity, range) {
+  let a = arrows.find((x) => !x.active);
+  if (!a) {
+    a = arrows[0];
+    deactivateArrow(a);
+  }
+  a.active = true;
+  a.pos.copy(origin);
+  a.vel.copy(dir).multiplyScalar(speed);
+  a.gravity = gravity ?? 16;
+  a.life = 6;
+  a.range = range ?? 60;
+  a.traveled = 0;
+  a.dmg = damage;
+  a.mesh.visible = true;
+  a.mesh.position.copy(origin);
+  a.mesh.lookAt(origin.clone().add(dir));
+  return a;
+}
+
+// 每帧推进所有箭矢：分步检测，避免高速穿透
+function updateArrows(dt) {
+  for (const a of arrows) {
+    if (!a.active) continue;
+    a.life -= dt;
+    if (a.life <= 0) {
+      deactivateArrow(a);
+      continue;
+    }
+    a.vel.y -= a.gravity * dt;
+    const move = a.vel.clone().multiplyScalar(dt);
+    const steps = Math.max(1, Math.ceil(move.length() / 0.35));
+    const sub = move.clone().divideScalar(steps);
+    const subLen = sub.length();
+    let hit = false;
+
+    for (let i = 0; i < steps; i++) {
+      const from = a.pos.clone();
+      const to = from.clone().add(sub);
+      const dir = sub.clone().normalize();
+
+      // 命中怪物
+      const mh = mobs.raycast(from, dir, subLen);
+      if (mh) {
+        const dead = mh.mob.hurt(creative ? 1000 : a.dmg);
+        sfx.play(dead ? "mob_death" : "mob_hurt");
+        if (mh.headshot) showHeadshot(mh.mob);
+        if (dead) mobs.kill(mh.mob);
+        hit = true;
+        break;
+      }
+      // 命中方块
+      const bx = Math.floor(to.x);
+      const by = Math.floor(to.y);
+      const bz = Math.floor(to.z);
+      if (!world.inBounds(bx, by, bz) || isSolid(world.getBlock(bx, by, bz))) {
+        hit = true;
+        break;
+      }
+      a.pos.copy(to);
+      a.traveled += subLen;
+      if (a.traveled >= a.range) {
+        hit = true;
+        break;
+      }
+    }
+
+    if (hit) {
+      deactivateArrow(a);
+    } else {
+      a.mesh.position.copy(a.pos);
+      a.mesh.lookAt(a.pos.clone().add(a.vel));
+    }
+  }
+}
+
 // ---------- 自适应 ----------
 window.addEventListener("resize", () => {
   const aspect = window.innerWidth / window.innerHeight;
@@ -1599,6 +1762,19 @@ function animate() {
   }
   updateMineBar();
 
+  // 弓：蓄力累积 + 蓄力条；箭矢始终推进（即便松开后）
+  if (bowCharging) {
+    const bow = heldBow();
+    if (!bow) {
+      bowCharging = false;
+      bowCharge = 0;
+    } else {
+      bowCharge = Math.min(bow.chargeTime, bowCharge + dt);
+    }
+  }
+  updateChargeBar();
+  updateArrows(dt);
+
   // 全自动武器：按住左键持续射击（fireGun 内部按冷却节流）
   if (firingHeld && !craftingOpen && document.pointerLockElement === canvas) {
     const g = heldGun();
@@ -1639,6 +1815,12 @@ if (new URLSearchParams(location.search).has("debug")) {
     toolYields,
     canMine,
     meleeDamage,
+    heldBow,
+    beginBowDraw,
+    releaseBow,
+    spawnArrow,
+    updateArrows,
+    arrows,
     heldTool,
     toolDurability,
     selectSlot,

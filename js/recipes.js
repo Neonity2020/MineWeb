@@ -33,7 +33,8 @@ import {
   WITHER_LEGS,
   WITHER_BOOTS,
   WITHER_SWORD,
-} from "./blocks.js?v=20260916w";
+  WITHER_BOW,
+} from "./blocks.js?v=20260916x";
 
 // out: 产物 { id, n }；in: 材料 [{ id, n }]
 // basic: true 表示无需工作台即可在背包直接合成（仅用于开局搭建工作台的基础配方）
@@ -75,6 +76,7 @@ export const RECIPES = [
   { out: { id: WITHER_LEGS, n: 1 }, in: [{ id: WITHER_INGOT, n: 4 }] },
   { out: { id: WITHER_BOOTS, n: 1 }, in: [{ id: WITHER_INGOT, n: 2 }] },
   { out: { id: WITHER_SWORD, n: 1 }, in: [{ id: WITHER_INGOT, n: 2 }, { id: STICK, n: 1 }] },
+  { out: { id: WITHER_BOW, n: 1 }, in: [{ id: WITHER_INGOT, n: 3 }, { id: STICK, n: 3 }] },
 
   // 生火
   { out: { id: FLINT_STEEL, n: 1 }, in: [{ id: COBBLESTONE, n: 2 }, { id: STICK, n: 1 }] },

@@ -45,6 +45,7 @@ export const WITHER_CHEST = 41;
 export const WITHER_LEGS = 42;
 export const WITHER_BOOTS = 43;
 export const WITHER_SWORD = 44;
+export const WITHER_BOW = 45;
 
 // 贴图块在图集中的顺序
 export const TILES = [
@@ -96,6 +97,7 @@ export const TILES = [
   "wither_legs",
   "wither_boots",
   "wither_sword",
+  "wither_bow",
 ];
 
 export const TILE = Object.fromEntries(TILES.map((n, i) => [n, i]));
@@ -121,6 +123,7 @@ function def(id, name, textures, opts = {}) {
     food: opts.food ?? null,
     cookTo: opts.cookTo ?? null,
     armor: opts.armor ?? null,
+    bow: opts.bow ?? null,
     textures,
   };
 }
@@ -303,6 +306,22 @@ export const BLOCKS = {
   [WITHER_LEGS]: armorDef(WITHER_LEGS, "凋灵护腿", TILE.wither_legs, "legs", 6),
   [WITHER_BOOTS]: armorDef(WITHER_BOOTS, "凋灵战靴", TILE.wither_boots, "boots", 3),
   [WITHER_SWORD]: toolDef(WITHER_SWORD, "凋零剑", TILE.wither_sword, "sword", 1.5, 1500, 4),
+  [WITHER_BOW]: def(WITHER_BOW, "凋零弓", all(TILE.wither_bow), {
+    solid: false,
+    opaque: false,
+    renderPass: "none",
+    placeable: false,
+    // 作为"工具"登记耐久，同时携带弓的属性
+    use: { type: "bow", speed: 1, durability: 400, tier: 4 },
+    bow: {
+      damage: 16, // 满蓄力伤害
+      speed: 46, // 初速（格/秒）
+      gravity: 16, // 箭矢重力
+      chargeTime: 1.0, // 拉满耗时（秒）
+      minPower: 0.3, // 轻点最小威力系数
+      range: 60, // 最大飞行距离
+    },
+  }),
 };
 
 function toolDef(id, name, tile, type, speed, durability, tier = 1) {
@@ -357,6 +376,10 @@ export function isArmor(id) {
   return id !== AIR && !!BLOCKS[id].armor;
 }
 
+export function isBow(id) {
+  return id !== AIR && !!BLOCKS[id].bow;
+}
+
 // 物品栏：工具在前，方块在后
 export const HOTBAR = [
   WOOD_PICKAXE,
@@ -372,6 +395,7 @@ export const HOTBAR = [
   IRON_SHOVEL,
   IRON_SWORD,
   WITHER_SWORD,
+  WITHER_BOW,
   PISTOL,
   SHOTGUN,
   SMG,
